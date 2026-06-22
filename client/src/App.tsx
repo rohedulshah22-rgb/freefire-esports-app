@@ -10,6 +10,7 @@ import Wallet from "./pages/Wallet";
 import AddMoney from "./pages/AddMoney";
 import Withdrawal from "./pages/Withdrawal";
 import Profile from "./pages/Profile";
+import MatchDetail from "./pages/MatchDetail";
 import AdminDashboard from "./pages/AdminDashboard";
 
 function Router() {
@@ -20,6 +21,7 @@ function Router() {
       <Route path={"/add-money"} component={AddMoney} />
       <Route path={"/withdraw"} component={Withdrawal} />
       <Route path={"/profile"} component={Profile} />
+      <Route path={"/match/:id"} component={MatchDetail} />
       <Route path={"/admin-panel-secret-access"} component={AdminDashboard} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}
