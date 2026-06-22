@@ -7,6 +7,9 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import { DeviceRestrictionGuard } from "./components/DeviceRestrictionGuard";
 import Home from "./pages/Home";
 import Wallet from "./pages/Wallet";
+import AddMoney from "./pages/AddMoney";
+import Withdrawal from "./pages/Withdrawal";
+import Profile from "./pages/Profile";
 import AdminDashboard from "./pages/AdminDashboard";
 
 function Router() {
@@ -14,6 +17,9 @@ function Router() {
     <Switch>
       <Route path={"/"} component={Home} />
       <Route path={"/wallet"} component={Wallet} />
+      <Route path={"/add-money"} component={AddMoney} />
+      <Route path={"/withdraw"} component={Withdrawal} />
+      <Route path={"/profile"} component={Profile} />
       <Route path={"/admin-panel-secret-access"} component={AdminDashboard} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}
