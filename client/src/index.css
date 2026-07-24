@@ -1,0 +1,321 @@
+@import "tailwindcss";
+
+@theme {
+  /* Premium Gaming Dark Theme - Neon Red, Carbon Black, Gold */
+  
+  /* Primary Colors */
+  --color-primary: oklch(0.65 0.25 10);      /* Neon Red */
+  --color-primary-foreground: oklch(0.98 0.01 0);  /* White */
+  
+  /* Accent Colors */
+  --color-accent: oklch(0.75 0.20 70);       /* Gold */
+  --color-accent-foreground: oklch(0.15 0.02 0);   /* Dark */
+  
+  /* Background Colors */
+  --color-background: oklch(0.12 0.01 0);    /* Carbon Black */
+  --color-foreground: oklch(0.95 0.01 0);    /* Off-white */
+  
+  /* Card Colors */
+  --color-card: oklch(0.18 0.02 0);          /* Dark Gray */
+  --color-card-foreground: oklch(0.95 0.01 0);    /* Off-white */
+  
+  /* Muted Colors */
+  --color-muted: oklch(0.35 0.02 0);         /* Gray */
+  --color-muted-foreground: oklch(0.75 0.02 0);   /* Light Gray */
+  
+  /* Destructive Colors */
+  --color-destructive: oklch(0.60 0.25 15);  /* Red */
+  --color-destructive-foreground: oklch(0.98 0.01 0);  /* White */
+  
+  /* Border & Input */
+  --color-border: oklch(0.25 0.02 0);        /* Dark Border */
+  --color-input: oklch(0.18 0.02 0);         /* Dark Input */
+  --color-ring: oklch(0.65 0.25 10);         /* Neon Red Ring */
+  
+  /* Secondary */
+  --color-secondary: oklch(0.25 0.05 250);   /* Dark Blue */
+  --color-secondary-foreground: oklch(0.95 0.01 0);  /* Off-white */
+  
+  /* Popover */
+  --color-popover: oklch(0.18 0.02 0);       /* Dark */
+  --color-popover-foreground: oklch(0.95 0.01 0);   /* Off-white */
+  
+  /* Typography */
+  --font-sans: "Inter", "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+  
+  /* Radius */
+  --radius: 0.5rem;
+  
+  /* Shadows - Gaming style */
+  --shadow-sm: 0 1px 2px 0 rgba(255, 20, 20, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(255, 20, 20, 0.1);
+  --shadow-lg: 0 10px 15px -3px rgba(255, 20, 20, 0.15);
+  --shadow-xl: 0 20px 25px -5px rgba(255, 20, 20, 0.2);
+  --shadow-glow: 0 0 20px rgba(255, 20, 20, 0.4);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rounding-mode" 1;
+  }
+
+  /* Gaming Typography */
+  h1 {
+    @apply text-4xl font-bold tracking-tight text-accent;
+    text-shadow: 0 0 10px rgba(212, 175, 55, 0.3);
+  }
+
+  h2 {
+    @apply text-3xl font-bold tracking-tight;
+  }
+
+  h3 {
+    @apply text-2xl font-bold;
+  }
+
+  h4 {
+    @apply text-xl font-bold;
+  }
+
+  h5 {
+    @apply text-lg font-semibold;
+  }
+
+  h6 {
+    @apply text-base font-semibold;
+  }
+
+  /* Neon Glow Effect for Primary Elements */
+  .neon-glow {
+    @apply text-primary;
+    text-shadow: 0 0 10px rgba(255, 20, 20, 0.6);
+  }
+
+  /* Gold Accent Glow */
+  .gold-glow {
+    @apply text-accent;
+    text-shadow: 0 0 10px rgba(212, 175, 55, 0.5);
+  }
+
+  /* Gaming Button Base */
+  button {
+    @apply transition-all duration-200;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  }
+
+  /* Container Customization */
+  .container {
+    @apply mx-auto max-w-7xl px-4 sm:px-6 lg:px-8;
+  }
+
+  /* Flex Defaults */
+  .flex {
+    @apply min-h-0 min-w-0;
+  }
+
+  /* Animations */
+  @keyframes glow-pulse {
+    0%, 100% {
+      text-shadow: 0 0 10px rgba(255, 20, 20, 0.4);
+    }
+    50% {
+      text-shadow: 0 0 20px rgba(255, 20, 20, 0.8);
+    }
+  }
+
+  @keyframes slide-in-from-left {
+    from {
+      opacity: 0;
+      transform: translateX(-20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  @keyframes slide-in-from-right {
+    from {
+      opacity: 0;
+      transform: translateX(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  .animate-glow-pulse {
+    animation: glow-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  .animate-slide-in-left {
+    animation: slide-in-from-left 0.3s ease-out;
+  }
+
+  .animate-slide-in-right {
+    animation: slide-in-from-right 0.3s ease-out;
+  }
+
+  .animate-fade-in {
+    animation: fade-in 0.3s ease-out;
+  }
+}
+
+@layer components {
+  /* Gaming Card */
+  .card-gaming {
+    @apply rounded-lg border border-primary/20 bg-card p-4 shadow-lg;
+    background: linear-gradient(135deg, rgba(255, 20, 20, 0.05) 0%, rgba(0, 0, 0, 0) 100%);
+    border-left: 3px solid rgba(255, 20, 20, 0.6);
+  }
+
+  /* Neon Button */
+  .btn-neon {
+    @apply relative inline-flex items-center justify-center rounded-lg bg-primary px-6 py-3 font-semibold text-primary-foreground transition-all duration-200 hover:shadow-lg hover:shadow-primary/50;
+    box-shadow: 0 0 20px rgba(255, 20, 20, 0.3);
+  }
+
+  .btn-neon:hover {
+    box-shadow: 0 0 30px rgba(255, 20, 20, 0.6);
+    transform: translateY(-2px);
+  }
+
+  .btn-neon:active {
+    transform: scale(0.97);
+  }
+
+  /* Gold Button */
+  .btn-gold {
+    @apply inline-flex items-center justify-center rounded-lg bg-accent px-6 py-3 font-semibold text-accent-foreground transition-all duration-200 hover:shadow-lg;
+    box-shadow: 0 0 15px rgba(212, 175, 55, 0.3);
+  }
+
+  .btn-gold:hover {
+    box-shadow: 0 0 25px rgba(212, 175, 55, 0.6);
+    transform: translateY(-2px);
+  }
+
+  /* Gaming Input */
+  .input-gaming {
+    @apply rounded-lg border border-primary/30 bg-input px-4 py-2 text-foreground placeholder-muted-foreground transition-all duration-200 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/50;
+  }
+
+  /* Tab Gaming Style */
+  .tabs-gaming {
+    @apply flex gap-2 border-b border-primary/20;
+  }
+
+  .tab-gaming {
+    @apply relative px-4 py-3 font-semibold text-muted-foreground transition-all duration-200 hover:text-foreground;
+  }
+
+  .tab-gaming.active {
+    @apply text-primary;
+  }
+
+  .tab-gaming.active::after {
+    @apply absolute bottom-0 left-0 right-0 h-1 bg-primary;
+    content: "";
+    box-shadow: 0 0 10px rgba(255, 20, 20, 0.6);
+  }
+
+  /* Badge Gaming */
+  .badge-gaming {
+    @apply inline-flex items-center rounded-full bg-primary/20 px-3 py-1 text-sm font-semibold text-primary;
+    border: 1px solid rgba(255, 20, 20, 0.3);
+  }
+
+  /* Alert Gaming */
+  .alert-gaming {
+    @apply rounded-lg border-l-4 border-primary bg-primary/10 p-4 text-foreground;
+  }
+
+  /* Divider with Glow */
+  .divider-gaming {
+    @apply my-4 border-t border-primary/20;
+  }
+
+  .divider-gaming::after {
+    content: "";
+    display: block;
+    height: 1px;
+    background: linear-gradient(to right, transparent, rgba(255, 20, 20, 0.5), transparent);
+    margin-top: -1px;
+  }
+}
+
+@layer utilities {
+  /* Text Glow Utilities */
+  .text-glow-red {
+    @apply text-primary;
+    text-shadow: 0 0 10px rgba(255, 20, 20, 0.6);
+  }
+
+  .text-glow-gold {
+    @apply text-accent;
+    text-shadow: 0 0 10px rgba(212, 175, 55, 0.5);
+  }
+
+  /* Background Gradients */
+  .bg-gradient-gaming {
+    background: linear-gradient(135deg, rgba(255, 20, 20, 0.1) 0%, rgba(212, 175, 55, 0.05) 100%);
+  }
+
+  /* Backdrop Blur */
+  .backdrop-blur-gaming {
+    @apply backdrop-blur-md;
+  }
+
+  /* Responsive Padding */
+  .px-safe {
+    @apply px-4 sm:px-6 lg:px-8;
+  }
+
+  .py-safe {
+    @apply py-4 sm:py-6 lg:py-8;
+  }
+
+  /* Gaming Grid */
+  .grid-gaming {
+    @apply grid gap-4 sm:gap-6;
+  }
+
+  /* Scrollbar Styling */
+  .scrollbar-gaming {
+    scrollbar-color: rgba(255, 20, 20, 0.3) rgba(0, 0, 0, 0.2);
+    scrollbar-width: thin;
+  }
+
+  .scrollbar-gaming::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .scrollbar-gaming::-webkit-scrollbar-track {
+    @apply bg-card;
+  }
+
+  .scrollbar-gaming::-webkit-scrollbar-thumb {
+    @apply rounded-full bg-primary/30;
+  }
+
+  .scrollbar-gaming::-webkit-scrollbar-thumb:hover {
+    @apply bg-primary/50;
+  }
+}
