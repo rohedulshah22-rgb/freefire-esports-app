@@ -25,6 +25,174 @@ import {
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useLocation } from "wouter";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { toast } from "sonner";
+
+/**
+ * Create Match Form Component
+ */
+function CreateMatchForm() {
+  const [matchType, setMatchType] = useState<"BR" | "CS" | "LW">("BR");
+  const [mode, setMode] = useState<"1v1" | "2v2" | "4v4">("1v1");
+  const [matchTitle, setMatchTitle] = useState("");
+  const [entryFee, setEntryFee] = useState("");
+  const [prizePool, setPrizePool] = useState("");
+  const [perKillAmount, setPerKillAmount] = useState("2");
+  const [totalSlots, setTotalSlots] = useState("");
+  const [matchTime, setMatchTime] = useState("");
+
+  const createMatchMutation = trpc.admin.createMatch.useMutation({
+    onSuccess: () => {
+      toast.success("Match created successfully!");
+      setMatchTitle("");
+      setEntryFee("");
+      setPrizePool("");
+      setPerKillAmount("2");
+      setTotalSlots("");
+      setMatchTime("");
+    },
+    onError: (error: any) => {
+      toast.error(error.message || "Failed to create match");
+    },
+  });
+
+  const handleCreateMatch = () => {
+    if (!matchTitle || !entryFee || !prizePool || !totalSlots || !matchTime) {
+      toast.error("Please fill in all fields");
+      return;
+    }
+
+    createMatchMutation.mutate({
+      matchType: matchType as any,
+      mode: mode as any,
+      mapName: matchTitle,
+      entryFee: parseFloat(entryFee),
+      totalSlots: parseInt(totalSlots),
+      totalPrizePool: parseFloat(prizePool),
+      perKillReward: parseFloat(perKillAmount),
+      scheduledStartTime: new Date(matchTime),
+    });
+  };
+
+  const getModeOptions = () => {
+    if (matchType === "BR") return ["1v1"];
+    if (matchType === "CS") return ["1v1", "2v2", "4v4"];
+    return ["1v1"];
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-semibold mb-2">Match Type</label>
+          <Select value={matchType} onValueChange={(v) => setMatchType(v as any)}>
+            <SelectTrigger className="input-gaming">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="BR">Battle Royale (BR)</SelectItem>
+              <SelectItem value="CS">Clash Squad (CS)</SelectItem>
+              <SelectItem value="LW">Lone Wolf</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <label className="block text-sm font-semibold mb-2">Mode</label>
+          <Select value={mode} onValueChange={(v) => setMode(v as any)}>
+            <SelectTrigger className="input-gaming">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {getModeOptions().map((m) => (
+                <SelectItem key={m} value={m}>
+                  {m}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <div>
+        <label className="block text-sm font-semibold mb-2">Match Title</label>
+        <Input
+          placeholder="e.g., Bermuda Showdown"
+          value={matchTitle}
+          onChange={(e) => setMatchTitle(e.target.value)}
+          className="input-gaming"
+        />
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-semibold mb-2">Entry Fee (₹)</label>
+          <Input
+            type="number"
+            placeholder="50"
+            value={entryFee}
+            onChange={(e) => setEntryFee(e.target.value)}
+            className="input-gaming"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-semibold mb-2">Total Prize Pool (₹)</label>
+          <Input
+            type="number"
+            placeholder="1000"
+            value={prizePool}
+            onChange={(e) => setPrizePool(e.target.value)}
+            className="input-gaming"
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-semibold mb-2">Per-Kill Amount (₹)</label>
+          <Input
+            type="number"
+            placeholder="2"
+            value={perKillAmount}
+            onChange={(e) => setPerKillAmount(e.target.value)}
+            className="input-gaming"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-semibold mb-2">Total Slots</label>
+          <Input
+            type="number"
+            placeholder="48"
+            value={totalSlots}
+            onChange={(e) => setTotalSlots(e.target.value)}
+            className="input-gaming"
+          />
+        </div>
+      </div>
+
+      <div>
+        <label className="block text-sm font-semibold mb-2">Match Start Time</label>
+        <Input
+          type="datetime-local"
+          value={matchTime}
+          onChange={(e) => setMatchTime(e.target.value)}
+          className="input-gaming"
+        />
+      </div>
+
+      <div className="bg-primary/10 border border-primary/20 rounded-lg p-3 text-sm text-muted-foreground">
+        <strong>Auto-Refund Rule:</strong> BR matches with fewer than 10 players will auto-cancel 5 minutes before start time, with instant refunds to all joined players' wallets.
+      </div>
+
+      <Button
+        className="btn-neon w-full"
+        onClick={handleCreateMatch}
+        disabled={createMatchMutation.isPending}
+      >
+        {createMatchMutation.isPending ? "Creating Match..." : "Create Match"}
+      </Button>
+    </div>
+  );
+}
 
 /**
  * Admin login component
@@ -199,11 +367,20 @@ function AdminDashboardContent() {
 
         {/* Tabs */}
         <Tabs defaultValue="deposits" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="create-match">Create Match</TabsTrigger>
             <TabsTrigger value="deposits">Deposits</TabsTrigger>
             <TabsTrigger value="withdrawals">Withdrawals</TabsTrigger>
             <TabsTrigger value="results">Match Results</TabsTrigger>
           </TabsList>
+
+          {/* Create Match Tab */}
+          <TabsContent value="create-match" className="mt-6">
+            <Card className="card-gaming">
+              <h2 className="mb-6 text-lg font-bold">Create New Match</h2>
+              <CreateMatchForm />
+            </Card>
+          </TabsContent>
 
           {/* Deposits Tab */}
           <TabsContent value="deposits" className="mt-6">
