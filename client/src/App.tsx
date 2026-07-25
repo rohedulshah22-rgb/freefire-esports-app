@@ -16,13 +16,13 @@ import AdminDashboard from "./pages/AdminDashboard";
 function Router() {
   return (
     <Switch>
+      <Route path={"/admin-panel-secret-access"} component={AdminDashboard} />
       <Route path={"/"} component={Home} />
       <Route path={"/wallet"} component={Wallet} />
       <Route path={"/add-money"} component={AddMoney} />
       <Route path={"/withdraw"} component={Withdrawal} />
       <Route path={"/profile"} component={Profile} />
       <Route path={"/match/:id"} component={MatchDetail} />
-      <Route path={"/admin-panel-secret-access"} component={AdminDashboard} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />
@@ -31,14 +31,23 @@ function Router() {
 }
 
 function App() {
+  // Check if user is accessing admin panel
+  const isAdminPath = typeof window !== 'undefined' && window.location.pathname === '/admin-panel-secret-access';
+
   return (
     <ErrorBoundary>
       <ThemeProvider defaultTheme="dark">
         <TooltipProvider>
-          <DeviceRestrictionGuard>
-            <Toaster />
+          <Toaster />
+          {isAdminPath ? (
+            // Admin panel bypasses device restriction
             <Router />
-          </DeviceRestrictionGuard>
+          ) : (
+            // Player pages have device restriction
+            <DeviceRestrictionGuard>
+              <Router />
+            </DeviceRestrictionGuard>
+          )}
         </TooltipProvider>
       </ThemeProvider>
     </ErrorBoundary>
