@@ -5,7 +5,7 @@ import { MessageCircle } from "lucide-react";
  * Displays as a floating button on all pages
  */
 export function WhatsAppSupport({
-  phoneNumber = "919876543210",
+  phoneNumber = "918334825288",
   message = "Hi%20I%20need%20support",
 }: {
   phoneNumber?: string;
@@ -31,7 +31,7 @@ export function WhatsAppSupport({
  * Alternative WhatsApp button with custom styling for gaming theme
  */
 export function WhatsAppSupportGaming({
-  phoneNumber = "919876543210",
+  phoneNumber = "918334825288",
   message = "Hi%20I%20need%20support",
 }: {
   phoneNumber?: string;
