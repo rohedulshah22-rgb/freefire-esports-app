@@ -82,16 +82,22 @@ export async function generateUpcomingMatches(hoursAhead: number = 24): Promise<
             credentialsVisibleAt.setMinutes(credentialsVisibleAt.getMinutes() - 15);
 
             await createMatch({
+              categoryId: category.id,
               modeId: mode.id,
+              matchTitle: `${category.name} - ${mode.name}`,
+              mapName: "Free Fire Arena",
               scheduledStartTime: matchTime,
               scheduledEndTime: endTime,
               status: "scheduled",
               entryFee: mode.entryFee,
+              totalSlots: mode.maxPlayers,
               totalPrizePool: "0",
+              perKillReward: "2",
               adminProfitDeducted: "0",
               currentPlayers: 0,
               minPlayersRequired: minPlayers,
               credentialsVisibleAt,
+              refundProcessed: false,
             });
 
             console.log(

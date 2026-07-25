@@ -133,11 +133,16 @@ export type MatchMode = typeof matchModes.$inferSelect;
 export type InsertMatchMode = typeof matchModes.$inferInsert;
 
 /**
- * Individual matches scheduled at hourly intervals
+ * Individual matches - now with admin creation fields
  */
 export const matches = mysqlTable("matches", {
   id: int("id").autoincrement().primaryKey(),
+  categoryId: int("categoryId").notNull(),
   modeId: int("modeId").notNull(),
+  
+  // Match details for admin creation
+  matchTitle: varchar("matchTitle", { length: 128 }).notNull(),
+  mapName: varchar("mapName", { length: 128 }).notNull(),
   
   // Schedule
   scheduledStartTime: datetime("scheduledStartTime").notNull(),
@@ -146,7 +151,7 @@ export const matches = mysqlTable("matches", {
   // Room credentials (hidden until 15 mins before start)
   roomId: varchar("roomId", { length: 64 }),
   roomPassword: varchar("roomPassword", { length: 64 }),
-  credentialsVisibleAt: datetime("credentialsVisibleAt"), // 15 mins before start
+  credentialsVisibleAt: datetime("credentialsVisibleAt"),
   
   // Match state
   status: mysqlEnum("status", [
@@ -158,15 +163,19 @@ export const matches = mysqlTable("matches", {
   
   // Entry fee and prize pool
   entryFee: decimal("entryFee", { precision: 10, scale: 2 }).notNull(),
-  totalPrizePool: decimal("totalPrizePool", { precision: 12, scale: 2 }).default("0"),
+  totalSlots: int("totalSlots").notNull(),
+  totalPrizePool: decimal("totalPrizePool", { precision: 12, scale: 2 }).notNull(),
+  perKillReward: decimal("perKillReward", { precision: 10, scale: 2 }).notNull(),
   adminProfitDeducted: decimal("adminProfitDeducted", { precision: 12, scale: 2 }).default("0"),
   
   // Player count
   currentPlayers: int("currentPlayers").default(0).notNull(),
-  minPlayersRequired: int("minPlayersRequired").notNull(), // 10 for BR, 2 for others
+  minPlayersRequired: int("minPlayersRequired").notNull(),
   
-  // Cancellation reason
+  // Cancellation tracking
   cancellationReason: text("cancellationReason"),
+  cancelledAt: datetime("cancelledAt"),
+  refundProcessed: boolean("refundProcessed").default(false).notNull(),
   
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
@@ -199,6 +208,10 @@ export const matchParticipants = mysqlTable("matchParticipants", {
   // Entry fee deducted from wallet
   entryFeeDeducted: decimal("entryFeeDeducted", { precision: 10, scale: 2 }).notNull(),
   
+  // Refund tracking
+  refundAmount: decimal("refundAmount", { precision: 10, scale: 2 }),
+  refundedAt: datetime("refundedAt"),
+  
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -207,54 +220,15 @@ export type MatchParticipant = typeof matchParticipants.$inferSelect;
 export type InsertMatchParticipant = typeof matchParticipants.$inferInsert;
 
 /**
- * Withdrawal requests
- */
-export const withdrawals = mysqlTable("withdrawals", {
-  id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").notNull(),
-  
-  amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
-  
-  // Payout method
-  payoutMethod: mysqlEnum("payoutMethod", ["upi", "google_play"]).notNull(),
-  payoutDetails: varchar("payoutDetails", { length: 255 }).notNull(), // UPI ID or email
-  
-  status: mysqlEnum("status", [
-    "pending",
-    "approved",
-    "rejected",
-    "completed",
-    "failed",
-  ]).default("pending").notNull(),
-  
-  rejectionReason: text("rejectionReason"),
-  
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type Withdrawal = typeof withdrawals.$inferSelect;
-export type InsertWithdrawal = typeof withdrawals.$inferInsert;
-
-/**
- * Deposit requests with UTR verification
+ * Deposits - money added to wallet
  */
 export const deposits = mysqlTable("deposits", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull(),
-  
   amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
   utrNumber: varchar("utrNumber", { length: 12 }).notNull(),
-  
-  status: mysqlEnum("status", [
-    "pending",
-    "approved",
-    "rejected",
-    "completed",
-  ]).default("pending").notNull(),
-  
+  status: mysqlEnum("status", ["pending", "approved", "rejected"]).default("pending").notNull(),
   rejectionReason: text("rejectionReason"),
-  
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -263,22 +237,33 @@ export type Deposit = typeof deposits.$inferSelect;
 export type InsertDeposit = typeof deposits.$inferInsert;
 
 /**
- * Referral tracking
+ * Withdrawals - money withdrawn from wallet
+ */
+export const withdrawals = mysqlTable("withdrawals", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
+  payoutMethod: mysqlEnum("payoutMethod", ["upi", "google_play"]).notNull(),
+  payoutDetails: varchar("payoutDetails", { length: 255 }).notNull(),
+  status: mysqlEnum("status", ["pending", "approved", "rejected", "completed"]).default("pending").notNull(),
+  rejectionReason: text("rejectionReason"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Withdrawal = typeof withdrawals.$inferSelect;
+export type InsertWithdrawal = typeof withdrawals.$inferInsert;
+
+/**
+ * Referrals - track referral relationships and bonuses
  */
 export const referrals = mysqlTable("referrals", {
   id: int("id").autoincrement().primaryKey(),
   referrerId: int("referrerId").notNull(),
   referredUserId: int("referredUserId").notNull(),
-  
   referralCode: varchar("referralCode", { length: 32 }).notNull(),
-  
-  // Bonus status
-  referrerBonusAwarded: boolean("referrerBonusAwarded").default(false).notNull(),
-  referredUserBonusAwarded: boolean("referredUserBonusAwarded").default(false).notNull(),
-  
-  // Triggered when referred user completes first deposit
-  firstDepositCompletedAt: timestamp("firstDepositCompletedAt"),
-  
+  bonusAwarded: boolean("bonusAwarded").default(false).notNull(),
+  bonusAmount: decimal("bonusAmount", { precision: 10, scale: 2 }).default("5").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
@@ -286,45 +271,12 @@ export type Referral = typeof referrals.$inferSelect;
 export type InsertReferral = typeof referrals.$inferInsert;
 
 /**
- * Banned accounts tracking
- */
-export const bannedAccounts = mysqlTable("bannedAccounts", {
-  id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").notNull().unique(),
-  
-  reason: mysqlEnum("reason", [
-    "hack_detected",
-    "emulator_detected",
-    "ios_detected",
-    "desktop_detected",
-    "tablet_detected",
-    "double_account",
-    "fraud",
-    "manual_ban",
-  ]).notNull(),
-  
-  bannedBy: int("bannedBy"), // Admin user ID
-  details: text("details"),
-  
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
-
-export type BannedAccount = typeof bannedAccounts.$inferSelect;
-export type InsertBannedAccount = typeof bannedAccounts.$inferInsert;
-
-/**
- * Admin audit log for tracking admin actions
+ * Admin audit log for tracking all admin actions
  */
 export const adminAuditLog = mysqlTable("adminAuditLog", {
   id: int("id").autoincrement().primaryKey(),
-  adminId: int("adminId").notNull(),
-  
   action: varchar("action", { length: 128 }).notNull(),
-  entityType: varchar("entityType", { length: 64 }), // "deposit", "withdrawal", "match", "user", etc.
-  entityId: int("entityId"),
-  
-  details: json("details"), // JSON object with action details
-  
+  details: json("details"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 

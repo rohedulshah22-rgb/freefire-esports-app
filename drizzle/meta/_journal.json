@@ -15,6 +15,13 @@
       "when": 1782096091621,
       "tag": "0001_heavy_spot",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1784973240867,
+      "tag": "0002_white_nightcrawler",
+      "breakpoints": true
     }
   ]
 }

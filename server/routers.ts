@@ -1,5 +1,10 @@
 import { COOKIE_NAME } from "@shared/const";
-import { getSessionCookieOptions } from "./_core/cookies";
+import { InsertMatch } from "../drizzle/schema";
+import {
+  getSessionCookieOptions,
+} from "./_core/cookies";
+import { getDb } from "./db";
+import { matches } from "../drizzle/schema";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router, protectedProcedure } from "./_core/trpc";
 import { z } from "zod";
@@ -251,7 +256,7 @@ export const appRouter = router({
           throw new TRPCError({ code: "NOT_FOUND", message: "Deposit not found" });
         }
 
-        await updateDepositStatus(input.depositId, "completed");
+        await updateDepositStatus(input.depositId, "approved");
         await updateWalletBalance(deposit.userId, "depositBalance", deposit.amount.toString());
 
         await createTransaction({
@@ -307,6 +312,82 @@ export const appRouter = router({
       .mutation(async ({ input }) => {
         await updateWithdrawalStatus(input.withdrawalId, "rejected", input.reason);
         return { success: true };
+      }),
+  }),
+
+  /**
+   * ADMIN OPERATIONS
+   */
+  admin: router({
+    createMatch: adminProcedure
+      .input(
+        z.object({
+          matchType: z.enum(["BR", "CS", "LW"]),
+          mode: z.enum(["1v1", "2v2", "4v4"]),
+          mapName: z.string(),
+          entryFee: z.number(),
+          totalSlots: z.number(),
+          totalPrizePool: z.number(),
+          perKillReward: z.number(),
+          scheduledStartTime: z.date(),
+        })
+      )
+      .mutation(async ({ input }) => {
+        // Get category ID
+        const categories = await getMatchCategories();
+        const category = categories.find((c) => c.name === input.matchType);
+        if (!category) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: `Category ${input.matchType} not found`,
+          });
+        }
+
+        // Get mode ID
+        const modes = await getMatchModesByCategory(category.id);
+        const modeObj = modes.find((m) => m.name === input.mode);
+        if (!modeObj) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: `Mode ${input.mode} not found for category ${input.matchType}`,
+          });
+        }
+
+        // Calculate end time (30 mins after start)
+        const endTime = new Date(input.scheduledStartTime);
+        endTime.setMinutes(endTime.getMinutes() + 30);
+
+        // Calculate credentials visibility time (15 mins before start)
+        const credentialsVisibleAt = new Date(input.scheduledStartTime);
+        credentialsVisibleAt.setMinutes(credentialsVisibleAt.getMinutes() - 15);
+
+        // Calculate min players required
+        const minPlayers = input.matchType === "BR" ? 10 : input.totalSlots;
+
+        // Create match
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+        const result = await db.insert(matches).values({
+          categoryId: category.id,
+          modeId: modeObj.id,
+          matchTitle: `${input.matchType} - ${input.mode}`,
+          mapName: input.mapName,
+          scheduledStartTime: input.scheduledStartTime,
+          scheduledEndTime: endTime,
+          status: "scheduled",
+          entryFee: input.entryFee.toString(),
+          totalSlots: input.totalSlots,
+          totalPrizePool: input.totalPrizePool.toString(),
+          perKillReward: input.perKillReward.toString(),
+          adminProfitDeducted: "0",
+          currentPlayers: 0,
+          minPlayersRequired: minPlayers,
+          credentialsVisibleAt,
+          refundProcessed: false,
+        });
+
+        return { matchId: result[0].insertId, success: true };
       }),
   }),
 

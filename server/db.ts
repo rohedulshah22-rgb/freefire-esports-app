@@ -19,8 +19,6 @@ import {
   InsertWithdrawal,
   referrals,
   InsertReferral,
-  bannedAccounts,
-  InsertBannedAccount,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
@@ -413,7 +411,7 @@ export async function getPendingDeposits() {
 
 export async function updateDepositStatus(
   depositId: number,
-  status: "approved" | "rejected" | "completed",
+  status: "pending" | "approved" | "rejected",
   rejectionReason?: string
 ): Promise<void> {
   const db = await getDb();
@@ -449,7 +447,7 @@ export async function getPendingWithdrawals() {
 
 export async function updateWithdrawalStatus(
   withdrawalId: number,
-  status: "approved" | "rejected" | "completed" | "failed",
+  status: "pending" | "approved" | "rejected" | "completed",
   rejectionReason?: string
 ): Promise<void> {
   const db = await getDb();
@@ -494,28 +492,19 @@ export async function isBanned(userId: number): Promise<boolean> {
 
   const result = await db
     .select()
-    .from(bannedAccounts)
-    .where(eq(bannedAccounts.userId, userId))
+    .from(users)
+    .where(eq(users.id, userId))
     .limit(1);
 
-  return result.length > 0;
+  return result.length > 0 && result[0].isBanned;
 }
 
 export async function banUser(
   userId: number,
-  reason: string,
-  bannedBy?: number,
-  details?: string
+  reason: string
 ): Promise<void> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-
-  await db.insert(bannedAccounts).values({
-    userId,
-    reason: reason as any,
-    bannedBy,
-    details,
-  });
 
   // Mark user as banned
   await db
