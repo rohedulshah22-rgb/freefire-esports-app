@@ -262,33 +262,134 @@ export default function MatchDetailPage() {
           </TabsContent>
 
           {/* Rules Tab */}
-          <TabsContent value="rules" className="mt-6">
+          <TabsContent value="rules" className="mt-6 space-y-4">
+            {/* BAN GUNS & ITEMS */}
             <Card className="card-gaming">
-              <h2 className="mb-4 font-bold text-foreground">Match Rules</h2>
-              <div className="space-y-3 text-sm">
-                <div className="flex items-start gap-3">
-                  <Badge className="mt-1 bg-primary/20 text-primary">1</Badge>
-                  <p className="text-muted-foreground">
-                    All players must join before match start time
-                  </p>
+              <h3 className="mb-3 font-bold text-accent text-lg">🚫 BAN GUNS & ITEMS</h3>
+              <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-3 space-y-2">
+                <p className="text-sm text-foreground"><strong>Strictly Banned:</strong></p>
+                <ul className="text-sm text-muted-foreground space-y-1 ml-4">
+                  <li>• Double Vector</li>
+                  <li>• M79 Launcher</li>
+                  <li>• All Launcher Items</li>
+                </ul>
+              </div>
+            </Card>
+
+            {/* ROOM SETTINGS */}
+            <Card className="card-gaming">
+              <h3 className="mb-3 font-bold text-accent text-lg">⚙️ ROOM SETTINGS</h3>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between bg-primary/10 rounded-lg p-3">
+                  <span className="text-sm text-muted-foreground">Minimum Level Required</span>
+                  <Badge className="bg-primary/30 text-primary">Level 40</Badge>
                 </div>
-                <div className="flex items-start gap-3">
-                  <Badge className="mt-1 bg-primary/20 text-primary">2</Badge>
-                  <p className="text-muted-foreground">
-                    No hacks, scripts, or third-party tools allowed
-                  </p>
+                <div className="flex items-center justify-between bg-primary/10 rounded-lg p-3">
+                  <span className="text-sm text-muted-foreground">Character Skill</span>
+                  <Badge className="bg-green-500/30 text-green-400">ON</Badge>
                 </div>
-                <div className="flex items-start gap-3">
-                  <Badge className="mt-1 bg-primary/20 text-primary">3</Badge>
-                  <p className="text-muted-foreground">
-                    Fair play required - instant ban for violations
-                  </p>
+                <div className="flex items-center justify-between bg-primary/10 rounded-lg p-3">
+                  <span className="text-sm text-muted-foreground">Mode</span>
+                  <Badge className="bg-primary/30 text-primary">Esports Mode</Badge>
                 </div>
-                <div className="flex items-start gap-3">
-                  <Badge className="mt-1 bg-primary/20 text-primary">4</Badge>
-                  <p className="text-muted-foreground">
-                    Admin decision is final on all disputes
-                  </p>
+                <div className="flex items-center justify-between bg-primary/10 rounded-lg p-3">
+                  <span className="text-sm text-muted-foreground">Revival / Auto Revival</span>
+                  <Badge className="bg-destructive/30 text-destructive">DISABLED</Badge>
+                </div>
+              </div>
+            </Card>
+
+            {/* ELIGIBILITY RULES */}
+            <Card className="card-gaming">
+              <h3 className="mb-3 font-bold text-accent text-lg">👤 ELIGIBILITY RULES</h3>
+              <div className="space-y-2 text-sm">
+                <div className="flex items-start gap-3 bg-primary/5 rounded-lg p-3">
+                  <Badge className="mt-0.5 bg-primary/20 text-primary">✓</Badge>
+                  <p className="text-muted-foreground">Players must be at least <strong>Level 40</strong></p>
+                </div>
+                <div className="flex items-start gap-3 bg-primary/5 rounded-lg p-3">
+                  <Badge className="mt-0.5 bg-primary/20 text-primary">✓</Badge>
+                  <p className="text-muted-foreground">Headshot Rate must be <strong>below 70%</strong> in BR Career</p>
+                </div>
+                <div className="flex items-start gap-3 bg-destructive/5 rounded-lg p-3">
+                  <Badge className="mt-0.5 bg-destructive/20 text-destructive">✗</Badge>
+                  <p className="text-muted-foreground">Emulators / PC players are <strong>strictly NOT allowed</strong></p>
+                </div>
+              </div>
+            </Card>
+
+            {/* INSTRUCTIONS BEFORE JOINING */}
+            <Card className="card-gaming">
+              <h3 className="mb-3 font-bold text-accent text-lg">📋 INSTRUCTIONS BEFORE JOINING</h3>
+              <div className="space-y-2 text-sm">
+                <div className="bg-secondary/10 rounded-lg p-3">
+                  <p className="text-foreground font-semibold mb-1">1. Account Name Entry</p>
+                  <p className="text-muted-foreground">Enter exact Free Fire Max Account Name (use simple fonts, no UID/Game ID in name field)</p>
+                </div>
+                <div className="bg-secondary/10 rounded-lg p-3">
+                  <p className="text-foreground font-semibold mb-1">2. Room Credentials</p>
+                  <p className="text-muted-foreground">Room ID & Password will be shared 2-3 minutes before match start time inside the app</p>
+                </div>
+                <div className="bg-destructive/10 rounded-lg p-3">
+                  <p className="text-foreground font-semibold mb-1">3. Late Entry Policy</p>
+                  <p className="text-muted-foreground">Late entry or missing the match will <strong>NOT be refunded</strong></p>
+                </div>
+                <div className="bg-destructive/10 rounded-lg p-3">
+                  <p className="text-foreground font-semibold mb-1">4. Player Registration</p>
+                  <p className="text-muted-foreground">Unregistered players/inviting unregistered friends leads to <strong>immediate penalty and ban</strong></p>
+                </div>
+                <div className="bg-accent/10 rounded-lg p-3">
+                  <p className="text-foreground font-semibold mb-1">5. Gameplay Recording</p>
+                  <p className="text-muted-foreground">Record your gameplay (POV screen recording required for any disputes/prizes)</p>
+                </div>
+              </div>
+            </Card>
+
+            {/* PAYMENT & UTR VERIFICATION */}
+            <Card className="card-gaming">
+              <h3 className="mb-3 font-bold text-accent text-lg">💳 PAYMENT & UTR VERIFICATION RULES</h3>
+              <div className="space-y-2">
+                <div className="bg-primary/10 border border-primary/30 rounded-lg p-3">
+                  <p className="text-sm text-foreground font-semibold mb-1">⚠️ UTR Requirement</p>
+                  <p className="text-sm text-muted-foreground">When adding money via UPI, you <strong>MUST</strong> enter the exact 12-digit UTR / Transaction Reference number</p>
+                </div>
+                <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-3">
+                  <p className="text-sm text-destructive font-semibold mb-1">🚫 Fake UTR Penalty</p>
+                  <p className="text-sm text-muted-foreground">Submitting fake or incorrect UTR numbers will result in <strong>immediate deposit rejection and permanent account ban</strong></p>
+                </div>
+              </div>
+            </Card>
+
+            {/* PROHIBITED BEHAVIOUR */}
+            <Card className="card-gaming">
+              <h3 className="mb-3 font-bold text-destructive text-lg">⛔ PROHIBITED BEHAVIOUR</h3>
+              <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-3 space-y-2">
+                <div className="flex items-start gap-2">
+                  <span className="text-destructive font-bold">✗</span>
+                  <p className="text-sm text-muted-foreground"><strong>Hacks, Panels, Glitches, Bugs</strong> - Strictly banned</p>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="text-destructive font-bold">✗</span>
+                  <p className="text-sm text-muted-foreground"><strong>Teaming up with opponents</strong> - Strictly banned</p>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="text-destructive font-bold">✗</span>
+                  <p className="text-sm text-muted-foreground"><strong>Abusive language</strong> - Leads to immediate ban and prize cancellation</p>
+                </div>
+              </div>
+            </Card>
+
+            {/* IMPORTANT TIPS & SUPPORT */}
+            <Card className="card-gaming">
+              <h3 className="mb-3 font-bold text-accent text-lg">💡 IMPORTANT TIPS & SUPPORT</h3>
+              <div className="space-y-2 text-sm">
+                <div className="bg-accent/10 rounded-lg p-3">
+                  <p className="text-foreground font-semibold mb-1">Prize Adjustment</p>
+                  <p className="text-muted-foreground">If slots are not full, winning prizes will adjust according to the slot structure</p>
+                </div>
+                <div className="bg-primary/10 rounded-lg p-3">
+                  <p className="text-foreground font-semibold mb-1">Report Violations</p>
+                  <p className="text-muted-foreground">Report hackers/issues with screen recording evidence to Customer Support <strong>within 20 minutes</strong> of match end</p>
                 </div>
               </div>
             </Card>
