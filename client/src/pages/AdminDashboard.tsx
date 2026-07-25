@@ -35,9 +35,8 @@ function AdminLogin({ onLogin }: { onLogin: () => void }) {
   const [error, setError] = useState("");
 
   const handleLogin = () => {
-    // TODO: Implement actual admin authentication
-    // For now, using hardcoded credentials for demo
-    if (username === "admin" && password === "admin123") {
+    // Admin credentials: R-ESPORTS / $ROSIDUL₹
+    if (username === "R-ESPORTS" && password === "$ROSIDUL₹") {
       localStorage.setItem("adminLoggedIn", "true");
       onLogin();
     } else {
@@ -385,31 +384,9 @@ function AdminDashboardContent() {
  * Admin Dashboard Page with authentication
  */
 export default function AdminDashboard() {
-  const { user } = useAuth();
   const [isLoggedIn, setIsLoggedIn] = useState(
     localStorage.getItem("adminLoggedIn") === "true"
   );
-
-  // Only allow admin users
-  if (user?.role !== "admin") {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center px-4">
-        <Card className="card-gaming w-full max-w-md text-center">
-          <AlertCircle className="mx-auto mb-4 h-12 w-12 text-destructive" />
-          <h1 className="text-2xl font-bold text-destructive mb-2">Access Denied</h1>
-          <p className="text-muted-foreground mb-4">
-            You do not have permission to access the admin dashboard.
-          </p>
-          <Button
-            variant="outline"
-            onClick={() => (window.location.href = "/")}
-          >
-            Go Home
-          </Button>
-        </Card>
-      </div>
-    );
-  }
 
   if (!isLoggedIn) {
     return <AdminLogin onLogin={() => setIsLoggedIn(true)} />;
