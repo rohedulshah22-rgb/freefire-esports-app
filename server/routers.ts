@@ -324,6 +324,7 @@ export const appRouter = router({
         z.object({
           matchType: z.enum(["BR", "CS", "LW"]),
           mode: z.enum(["1v1", "2v2", "4v4"]),
+          matchTitle: z.string().optional(),
           mapName: z.string(),
           entryFee: z.number(),
           totalSlots: z.number(),
@@ -333,13 +334,21 @@ export const appRouter = router({
         })
       )
       .mutation(async ({ input }) => {
+        // Map matchType to actual category name
+        const categoryNameMap: Record<string, string> = {
+          "BR": "BR",
+          "CS": "CS",
+          "LW": "Lone Wolf",
+        };
+        const categoryName = categoryNameMap[input.matchType];
+        
         // Get category ID
         const categories = await getMatchCategories();
-        const category = categories.find((c) => c.name === input.matchType);
+        const category = categories.find((c) => c.name === categoryName);
         if (!category) {
           throw new TRPCError({
             code: "NOT_FOUND",
-            message: `Category ${input.matchType} not found`,
+            message: `Category ${input.matchType} (${categoryName}) not found`,
           });
         }
 
@@ -368,10 +377,13 @@ export const appRouter = router({
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
+        // Use provided matchTitle or generate default
+        const finalMatchTitle = input.matchTitle || `${input.matchType} - ${input.mode}`;
+
         const result = await db.insert(matches).values({
           categoryId: category.id,
           modeId: modeObj.id,
-          matchTitle: `${input.matchType} - ${input.mode}`,
+          matchTitle: finalMatchTitle,
           mapName: input.mapName,
           scheduledStartTime: input.scheduledStartTime,
           scheduledEndTime: endTime,
@@ -387,6 +399,7 @@ export const appRouter = router({
           refundProcessed: false,
         });
 
+        console.log(`[Admin] Match created: ID=${result[0].insertId}, Category=${categoryName}, Mode=${input.mode}, StartTime=${input.scheduledStartTime}`);
         return { matchId: result[0].insertId, success: true };
       }),
   }),

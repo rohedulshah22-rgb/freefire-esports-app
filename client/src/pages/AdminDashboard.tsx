@@ -65,6 +65,7 @@ function CreateMatchForm() {
     createMatchMutation.mutate({
       matchType: matchType as any,
       mode: mode as any,
+      matchTitle: matchTitle,
       mapName: matchTitle,
       entryFee: parseFloat(entryFee),
       totalSlots: parseInt(totalSlots),

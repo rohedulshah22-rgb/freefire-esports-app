@@ -265,7 +265,7 @@ export async function getUpcomingMatches(
     conditions.push(eq(matchModes.id, modeId));
   }
 
-  return await db
+  const results = await db
     .select({
       match: matches,
       mode: matchModes,
@@ -275,7 +275,10 @@ export async function getUpcomingMatches(
     .innerJoin(matchModes, eq(matches.modeId, matchModes.id))
     .innerJoin(matchCategories, eq(matchModes.categoryId, matchCategories.id))
     .where(and(...conditions))
-    .orderBy(matches.scheduledStartTime)
+    .orderBy(matches.scheduledStartTime);
+  
+  console.log(`[getUpcomingMatches] CategoryID=${categoryId}, ModeID=${modeId}, TimeWindow=${now.toISOString()} to ${futureTime.toISOString()}, Found=${results.length} matches`);
+  return results;
 }
 
 export async function getMatchById(matchId: number) {
