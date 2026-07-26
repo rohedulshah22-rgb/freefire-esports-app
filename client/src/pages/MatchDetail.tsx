@@ -101,114 +101,143 @@ export default function MatchDetailPage() {
     );
   }
 
-  const isMatchStarted = new Date(match.startTime) <= new Date();
-  const timeUntilStart = new Date(match.startTime).getTime() - new Date().getTime();
-  const minutesUntilStart = Math.floor(timeUntilStart / 60000);
-  const roomCredentialsVisible = minutesUntilStart <= 15;
+  // Calculate if match has started
+  const matchStartTime = new Date(match.startTime);
+  const now = new Date();
+  const isMatchStarted = now > matchStartTime;
+
+  // Calculate if room credentials should be visible (15 mins before start)
+  const fifteenMinsBeforeStart = new Date(matchStartTime.getTime() - 15 * 60 * 1000);
+  const roomCredentialsVisible = now >= fifteenMinsBeforeStart;
 
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <div className="border-b border-primary/20 bg-gradient-gaming py-6 px-4">
-        <div className="mx-auto max-w-4xl">
-          <button
-            onClick={() => setLocation("/")}
-            className="mb-4 flex items-center gap-2 text-accent hover:text-primary transition-colors"
-          >
-            <ArrowLeft className="h-5 w-5" />
-            Back
-          </button>
-          <div className="flex items-start justify-between">
+      <div className="sticky top-0 z-40 border-b border-border/50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="container mx-auto max-w-2xl px-4 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setLocation("/")}
+              className="hover:bg-accent/20"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
             <div>
-              <h1 className="text-3xl font-bold text-accent mb-2">
-                {match.category === "BR" ? "Battle Royale" : match.category === "CS" ? "Clash Squad" : "Lone Wolf"}
-              </h1>
-              <p className="text-muted-foreground">{match.mode}</p>
+              <h1 className="font-bold text-foreground">Match Details</h1>
+              <p className="text-xs text-muted-foreground">
+                {match.category} • {match.mode}
+              </p>
             </div>
-            <Badge className="bg-primary text-primary-foreground">
-              ₹{match.entryFee}
-            </Badge>
           </div>
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="mx-auto max-w-4xl px-4 py-6">
-        {/* Match Info Cards */}
-        <div className="grid gap-4 sm:grid-cols-2 mb-6">
-          <Card className="card-gaming">
-            <div className="flex items-center gap-3">
-              <Clock className="h-8 w-8 text-accent" />
-              <div>
-                <p className="text-xs text-muted-foreground">Start Time</p>
-                <p className="font-semibold text-foreground">
-                  {new Date(match.startTime).toLocaleTimeString()}
-                </p>
-              </div>
+      <div className="container mx-auto max-w-2xl px-4 py-6 space-y-6">
+        {/* Match Overview Card */}
+        <Card className="card-gaming">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <p className="text-xs text-muted-foreground mb-1">Category</p>
+              <p className="font-semibold text-foreground">{match.category}</p>
             </div>
-          </Card>
-
-          <Card className="card-gaming">
-            <div className="flex items-center gap-3">
-              <Users className="h-8 w-8 text-primary" />
-              <div>
-                <p className="text-xs text-muted-foreground">Players Joined</p>
-                <p className="font-semibold text-foreground">
-                  {match.playersJoined}/{match.maxPlayers}
-                </p>
-              </div>
+            <div>
+              <p className="text-xs text-muted-foreground mb-1">Mode</p>
+              <p className="font-semibold text-foreground">{match.mode}</p>
             </div>
-          </Card>
-
-          <Card className="card-gaming">
-            <div className="flex items-center gap-3">
-              <Gamepad2 className="h-8 w-8 text-secondary" />
-              <div>
-                <p className="text-xs text-muted-foreground">Game Mode</p>
-                <p className="font-semibold text-foreground">{match.mode}</p>
-              </div>
+            <div>
+              <p className="text-xs text-muted-foreground mb-1">Entry Fee</p>
+              <p className="font-semibold text-foreground">₹{match.entryFee}</p>
             </div>
-          </Card>
-
-          <Card className="card-gaming">
-            <div className="flex items-center gap-3">
-              <Trophy className="h-8 w-8 text-accent" />
-              <div>
-                <p className="text-xs text-muted-foreground">Prize Pool</p>
-                <p className="font-semibold text-foreground">₹{match.prizePool}</p>
-              </div>
+            <div>
+              <p className="text-xs text-muted-foreground mb-1">Prize Pool</p>
+              <p className="font-semibold text-accent">₹{match.prizePool}</p>
             </div>
-          </Card>
-        </div>
+            <div>
+              <p className="text-xs text-muted-foreground mb-1">Players</p>
+              <p className="font-semibold text-foreground">
+                {match.playersJoined}/{match.maxPlayers}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground mb-1">Start Time</p>
+              <p className="font-semibold text-foreground">
+                {new Date(match.startTime).toLocaleTimeString()}
+              </p>
+            </div>
+          </div>
+        </Card>
 
-        {/* Tabs */}
+        {/* Join Button */}
+        {!isMatchStarted && (
+          <Button
+            onClick={handleJoinMatch}
+            disabled={isJoining}
+            className="w-full bg-accent hover:bg-accent/90 text-white font-bold py-3 text-lg"
+          >
+            {isJoining ? "Joining..." : `Join Match - ₹${match.entryFee}`}
+          </Button>
+        )}
+
+        {/* Tabs Section */}
         <Tabs defaultValue="details" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="details">Details</TabsTrigger>
-            <TabsTrigger value="rules">Rules</TabsTrigger>
-            <TabsTrigger value="prizes">Prizes</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-3 bg-primary/10">
+            <TabsTrigger value="details" className="data-[state=active]:bg-accent">
+              <Gamepad2 className="h-4 w-4 mr-2" />
+              Details
+            </TabsTrigger>
+            <TabsTrigger value="room" className="data-[state=active]:bg-accent">
+              <Lock className="h-4 w-4 mr-2" />
+              Room
+            </TabsTrigger>
+            <TabsTrigger value="rules" className="data-[state=active]:bg-accent">
+              <AlertCircle className="h-4 w-4 mr-2" />
+              Rules
+            </TabsTrigger>
           </TabsList>
 
           {/* Details Tab */}
-          <TabsContent value="details" className="mt-6">
+          <TabsContent value="details" className="mt-6 space-y-4">
             <Card className="card-gaming">
-              <h2 className="mb-4 font-bold text-foreground">Match Information</h2>
-              <div className="space-y-4">
-                <div>
-                  <p className="text-xs text-muted-foreground mb-1">Category</p>
-                  <p className="font-semibold text-foreground">{match.category}</p>
+              <h2 className="mb-4 flex items-center gap-2 font-bold text-foreground">
+                <Trophy className="h-5 w-5 text-accent" />
+                Prize Distribution
+              </h2>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between bg-accent/10 rounded-lg p-3">
+                  <span className="text-sm text-muted-foreground">Per Kill Reward</span>
+                  <span className="font-bold text-accent">₹2</span>
                 </div>
-                <div>
-                  <p className="text-xs text-muted-foreground mb-1">Mode</p>
-                  <p className="font-semibold text-foreground">{match.mode}</p>
+                <div className="flex items-center justify-between bg-primary/10 rounded-lg p-3">
+                  <span className="text-sm text-muted-foreground">Total Prize Pool</span>
+                  <span className="font-bold text-primary">₹{match.prizePool}</span>
                 </div>
+                <div className="flex items-center justify-between bg-green-500/10 rounded-lg p-3">
+                  <span className="text-sm text-muted-foreground">Top 5 Winners</span>
+                  <span className="font-bold text-green-400">Eligible</span>
+                </div>
+              </div>
+            </Card>
+
+            <Card className="card-gaming">
+              <h2 className="mb-4 flex items-center gap-2 font-bold text-foreground">
+                <Users className="h-5 w-5 text-accent" />
+                Match Status
+              </h2>
+              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-xs text-muted-foreground mb-1">Entry Fee</p>
-                  <p className="font-semibold text-foreground">₹{match.entryFee}</p>
+                  <p className="text-xs text-muted-foreground mb-1">Players Joined</p>
+                  <p className="font-semibold text-foreground">{match.playersJoined}</p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground mb-1">Max Players</p>
                   <p className="font-semibold text-foreground">{match.maxPlayers}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Mode</p>
+                  <p className="font-semibold text-foreground">{match.mode}</p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground mb-1">Status</p>
@@ -261,8 +290,62 @@ export default function MatchDetailPage() {
             )}
           </TabsContent>
 
+          {/* Room Tab */}
+          <TabsContent value="room" className="mt-6 space-y-4">
+            {roomCredentialsVisible && (
+              <Card className="card-gaming">
+                <h2 className="mb-4 flex items-center gap-2 font-bold text-foreground">
+                  <Eye className="h-5 w-5 text-accent" />
+                  Room Details
+                </h2>
+                <div className="space-y-4">
+                  <div className="rounded-lg bg-primary/10 p-4">
+                    <p className="text-xs text-muted-foreground mb-2">Room ID</p>
+                    <p className="font-mono text-lg font-bold text-primary">
+                      {match.roomId || "ROOM123"}
+                    </p>
+                  </div>
+                  <div className="rounded-lg bg-accent/10 p-4">
+                    <p className="text-xs text-muted-foreground mb-2">Room Password</p>
+                    <p className="font-mono text-lg font-bold text-accent">
+                      {match.roomPassword || "PASS456"}
+                    </p>
+                  </div>
+                </div>
+              </Card>
+            )}
+
+            {!roomCredentialsVisible && (
+              <Card className="card-gaming mt-4">
+                <div className="flex items-center gap-3 text-sm">
+                  <Lock className="h-5 w-5 text-muted-foreground" />
+                  <p className="text-muted-foreground">
+                    Room details will be visible 15 minutes before match start
+                  </p>
+                </div>
+              </Card>
+            )}
+          </TabsContent>
+
           {/* Rules Tab */}
           <TabsContent value="rules" className="mt-6 space-y-4">
+            {/* IMPORTANT WARNING HEADER */}
+            <div className="relative overflow-hidden rounded-lg border-2 border-yellow-500/60 bg-gradient-to-r from-yellow-500/10 to-orange-500/10 p-4 shadow-lg shadow-yellow-500/20">
+              {/* Glowing background effect */}
+              <div className="absolute inset-0 bg-gradient-to-r from-yellow-500/5 to-transparent opacity-50"></div>
+              
+              {/* Content */}
+              <div className="relative z-10 space-y-2">
+                <h2 className="text-lg font-black text-yellow-400 flex items-center gap-2 drop-shadow-lg">
+                  <span className="text-2xl animate-pulse">⚠️</span>
+                  IMPORTANT: READ ALL RULES & REGULATIONS CAREFULLY BEFORE JOINING. STRICT COMPLIANCE IS MANDATORY!
+                </h2>
+                <p className="text-sm text-yellow-300/90 italic font-medium">
+                  ম্যাচে জয়েন করার আগে সমস্ত নিয়মাবলী মনোযোগ দিয়ে পড়ুন এবং তা মেনে চলুন।
+                </p>
+              </div>
+            </div>
+
             {/* BAN GUNS & ITEMS */}
             <Card className="card-gaming">
               <h3 className="mb-3 font-bold text-accent text-lg">🚫 BAN GUNS & ITEMS</h3>
@@ -301,206 +384,64 @@ export default function MatchDetailPage() {
 
             {/* ELIGIBILITY RULES */}
             <Card className="card-gaming">
-              <h3 className="mb-3 font-bold text-accent text-lg">👤 ELIGIBILITY RULES</h3>
-              <div className="space-y-2 text-sm">
-                <div className="flex items-start gap-3 bg-primary/5 rounded-lg p-3">
-                  <Badge className="mt-0.5 bg-primary/20 text-primary">✓</Badge>
-                  <p className="text-muted-foreground">Players must be at least <strong>Level 40</strong></p>
-                </div>
-                <div className="flex items-start gap-3 bg-primary/5 rounded-lg p-3">
-                  <Badge className="mt-0.5 bg-primary/20 text-primary">✓</Badge>
-                  <p className="text-muted-foreground">Headshot Rate must be <strong>below 70%</strong> in BR Career</p>
-                </div>
-                <div className="flex items-start gap-3 bg-destructive/5 rounded-lg p-3">
-                  <Badge className="mt-0.5 bg-destructive/20 text-destructive">✗</Badge>
-                  <p className="text-muted-foreground">Emulators / PC players are <strong>strictly NOT allowed</strong></p>
-                </div>
+              <h3 className="mb-3 font-bold text-accent text-lg">✅ ELIGIBILITY RULES</h3>
+              <div className="bg-primary/10 border border-primary/30 rounded-lg p-3 space-y-2">
+                <ul className="text-sm text-muted-foreground space-y-2">
+                  <li>• Players must be at least <strong>Level 40</strong></li>
+                  <li>• Headshot Rate must be <strong>below 70%</strong> in BR Career</li>
+                  <li>• <strong>Emulators / PC players are strictly NOT allowed</strong></li>
+                </ul>
               </div>
             </Card>
 
             {/* INSTRUCTIONS BEFORE JOINING */}
             <Card className="card-gaming">
               <h3 className="mb-3 font-bold text-accent text-lg">📋 INSTRUCTIONS BEFORE JOINING</h3>
-              <div className="space-y-2 text-sm">
-                <div className="bg-secondary/10 rounded-lg p-3">
-                  <p className="text-foreground font-semibold mb-1">1. Account Name Entry</p>
-                  <p className="text-muted-foreground">Enter exact Free Fire Max Account Name (use simple fonts, no UID/Game ID in name field)</p>
-                </div>
-                <div className="bg-secondary/10 rounded-lg p-3">
-                  <p className="text-foreground font-semibold mb-1">2. Room Credentials</p>
-                  <p className="text-muted-foreground">Room ID & Password will be shared 2-3 minutes before match start time inside the app</p>
-                </div>
-                <div className="bg-destructive/10 rounded-lg p-3">
-                  <p className="text-foreground font-semibold mb-1">3. Late Entry Policy</p>
-                  <p className="text-muted-foreground">Late entry or missing the match will <strong>NOT be refunded</strong></p>
-                </div>
-                <div className="bg-destructive/10 rounded-lg p-3">
-                  <p className="text-foreground font-semibold mb-1">4. Player Registration</p>
-                  <p className="text-muted-foreground">Unregistered players/inviting unregistered friends leads to <strong>immediate penalty and ban</strong></p>
-                </div>
-                <div className="bg-accent/10 rounded-lg p-3">
-                  <p className="text-foreground font-semibold mb-1">5. Gameplay Recording</p>
-                  <p className="text-muted-foreground">Record your gameplay (POV screen recording required for any disputes/prizes)</p>
-                </div>
+              <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 space-y-2">
+                <ul className="text-sm text-muted-foreground space-y-2">
+                  <li>• Enter exact <strong>Free Fire Max Account Name</strong> (use simple fonts, no UID/Game ID in name field)</li>
+                  <li>• Room ID & Password will be shared <strong>2-3 minutes before match start time</strong> inside the app</li>
+                  <li>• <strong>Late entry or missing the match will NOT be refunded</strong></li>
+                  <li>• <strong>Unregistered players/inviting unregistered friends leads to immediate penalty and ban</strong></li>
+                  <li>• <strong>Record your gameplay</strong> (POV screen recording required for any disputes/prizes)</li>
+                </ul>
               </div>
             </Card>
 
             {/* PAYMENT & UTR VERIFICATION */}
             <Card className="card-gaming">
               <h3 className="mb-3 font-bold text-accent text-lg">💳 PAYMENT & UTR VERIFICATION RULES</h3>
-              <div className="space-y-2">
-                <div className="bg-primary/10 border border-primary/30 rounded-lg p-3">
-                  <p className="text-sm text-foreground font-semibold mb-1">⚠️ UTR Requirement</p>
-                  <p className="text-sm text-muted-foreground">When adding money via UPI, you <strong>MUST</strong> enter the exact 12-digit UTR / Transaction Reference number</p>
-                </div>
-                <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-3">
-                  <p className="text-sm text-destructive font-semibold mb-1">🚫 Fake UTR Penalty</p>
-                  <p className="text-sm text-muted-foreground">Submitting fake or incorrect UTR numbers will result in <strong>immediate deposit rejection and permanent account ban</strong></p>
-                </div>
+              <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3 space-y-2">
+                <ul className="text-sm text-muted-foreground space-y-2">
+                  <li>• When adding money via UPI, you <strong>MUST enter the exact 12-digit UTR / Transaction Reference number</strong></li>
+                  <li>• <strong>Submitting fake or incorrect UTR numbers will result in immediate deposit rejection and permanent account ban</strong></li>
+                </ul>
               </div>
             </Card>
 
             {/* PROHIBITED BEHAVIOUR */}
             <Card className="card-gaming">
-              <h3 className="mb-3 font-bold text-destructive text-lg">⛔ PROHIBITED BEHAVIOUR</h3>
+              <h3 className="mb-3 font-bold text-accent text-lg">🚫 PROHIBITED BEHAVIOUR</h3>
               <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-3 space-y-2">
-                <div className="flex items-start gap-2">
-                  <span className="text-destructive font-bold">✗</span>
-                  <p className="text-sm text-muted-foreground"><strong>Hacks, Panels, Glitches, Bugs</strong> - Strictly banned</p>
-                </div>
-                <div className="flex items-start gap-2">
-                  <span className="text-destructive font-bold">✗</span>
-                  <p className="text-sm text-muted-foreground"><strong>Teaming up with opponents</strong> - Strictly banned</p>
-                </div>
-                <div className="flex items-start gap-2">
-                  <span className="text-destructive font-bold">✗</span>
-                  <p className="text-sm text-muted-foreground"><strong>Abusive language</strong> - Leads to immediate ban and prize cancellation</p>
-                </div>
+                <ul className="text-sm text-muted-foreground space-y-2">
+                  <li>• <strong>Hacks, Panels, Glitches, Bugs, and Teaming up with opponents are strictly banned</strong></li>
+                  <li>• <strong>Abusive language will lead to an immediate ban and prize cancellation</strong></li>
+                </ul>
               </div>
             </Card>
 
             {/* IMPORTANT TIPS & SUPPORT */}
             <Card className="card-gaming">
               <h3 className="mb-3 font-bold text-accent text-lg">💡 IMPORTANT TIPS & SUPPORT</h3>
-              <div className="space-y-2 text-sm">
-                <div className="bg-accent/10 rounded-lg p-3">
-                  <p className="text-foreground font-semibold mb-1">Prize Adjustment</p>
-                  <p className="text-muted-foreground">If slots are not full, winning prizes will adjust according to the slot structure</p>
-                </div>
-                <div className="bg-primary/10 rounded-lg p-3">
-                  <p className="text-foreground font-semibold mb-1">Report Violations</p>
-                  <p className="text-muted-foreground">Report hackers/issues with screen recording evidence to Customer Support <strong>within 20 minutes</strong> of match end</p>
-                </div>
-              </div>
-            </Card>
-          </TabsContent>
-
-          {/* Prizes Tab */}
-          <TabsContent value="prizes" className="mt-6">
-            <Card className="card-gaming">
-              <h2 className="mb-4 font-bold text-foreground">Prize Distribution</h2>
-              <div className="space-y-3">
-                {match.category === "BR" ? (
-                  <>
-                    <div className="flex items-center justify-between rounded-lg bg-primary/10 p-3">
-                      <span className="font-semibold text-foreground">1st Place</span>
-                      <span className="text-primary font-bold">₹{(parseFloat(match.prizePool) * 0.4).toFixed(0)}</span>
-                    </div>
-                    <div className="flex items-center justify-between rounded-lg bg-secondary/10 p-3">
-                      <span className="font-semibold text-foreground">2nd Place</span>
-                      <span className="text-secondary font-bold">₹{(parseFloat(match.prizePool) * 0.25).toFixed(0)}</span>
-                    </div>
-                    <div className="flex items-center justify-between rounded-lg bg-accent/10 p-3">
-                      <span className="font-semibold text-foreground">3rd Place</span>
-                      <span className="text-accent font-bold">₹{(parseFloat(match.prizePool) * 0.15).toFixed(0)}</span>
-                    </div>
-                    <div className="flex items-center justify-between rounded-lg bg-muted/10 p-3">
-                      <span className="font-semibold text-foreground">4th-5th Place</span>
-                      <span className="text-muted-foreground font-bold">₹{(parseFloat(match.prizePool) * 0.1).toFixed(0)} each</span>
-                    </div>
-                  </>
-                ) : (
-                  <div className="flex items-center justify-between rounded-lg bg-primary/10 p-3">
-                    <span className="font-semibold text-foreground">Winner</span>
-                    <span className="text-primary font-bold">₹{match.prizePool}</span>
-                  </div>
-                )}
-                <div className="mt-4 rounded-lg border-l-4 border-accent bg-accent/10 p-3">
-                  <p className="text-xs text-muted-foreground">
-                    <strong>Kill Bonus:</strong> 2 Coins per kill
-                  </p>
-                </div>
+              <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-3 space-y-2">
+                <ul className="text-sm text-muted-foreground space-y-2">
+                  <li>• If slots are not full, winning prizes will adjust according to the slot structure</li>
+                  <li>• Report hackers/issues with screen recording evidence to Customer Support <strong>within 20 minutes of match end</strong></li>
+                </ul>
               </div>
             </Card>
           </TabsContent>
         </Tabs>
-
-        {/* Join Button Section */}
-        {!isMatchStarted && (
-          <Card className="card-gaming mt-6">
-            <h2 className="mb-4 font-bold text-foreground">Join Match</h2>
-
-            {wallet && (
-              <div className="mb-4 rounded-lg bg-secondary/10 p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-sm text-muted-foreground">Your Deposit Balance</p>
-                  <p className="font-bold text-foreground">₹{wallet.depositBalance}</p>
-                </div>
-                <div className="flex items-center justify-between">
-                  <p className="text-sm text-muted-foreground">Entry Fee</p>
-                  <p className="font-bold text-primary">₹{match.entryFee}</p>
-                </div>
-              </div>
-            )}
-
-            {wallet && parseFloat(wallet.depositBalance) < parseFloat(match.entryFee) && (
-              <div className="mb-4 rounded-lg border-l-4 border-destructive bg-destructive/10 p-3 flex items-start gap-3">
-                <AlertCircle className="h-5 w-5 text-destructive mt-0.5" />
-                <div>
-                  <p className="text-sm font-semibold text-destructive">Insufficient Balance</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Add ₹{(parseFloat(match.entryFee) - parseFloat(wallet.depositBalance)).toFixed(0)} more to join
-                  </p>
-                </div>
-              </div>
-            )}
-
-            <div className="space-y-2">
-              <Button
-                className="btn-neon w-full"
-                onClick={handleJoinMatch}
-                disabled={
-                  isJoining ||
-                  !wallet ||
-                  parseFloat(wallet.depositBalance) < parseFloat(match.entryFee)
-                }
-                size="lg"
-              >
-                {isJoining ? "Joining..." : "Join Match"}
-              </Button>
-              {wallet && parseFloat(wallet.depositBalance) < parseFloat(match.entryFee) && (
-                <Button
-                  className="btn-gold w-full"
-                  onClick={() => setLocation("/add-money")}
-                  variant="outline"
-                >
-                  Add Money
-                </Button>
-              )}
-            </div>
-          </Card>
-        )}
-
-        {isMatchStarted && (
-          <Card className="card-gaming mt-6">
-            <div className="flex items-center gap-3 text-sm">
-              <AlertCircle className="h-5 w-5 text-destructive" />
-              <p className="text-destructive font-semibold">
-                This match has already started
-              </p>
-            </div>
-          </Card>
-        )}
       </div>
 
       {/* Floating WhatsApp Support Button */}
