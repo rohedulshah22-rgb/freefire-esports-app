@@ -181,12 +181,12 @@ export default function Home() {
     { enabled: !!selectedCategory }
   );
 
-  // Fetch upcoming matches
+  // Fetch upcoming matches (all future matches, no time window restriction)
   const { data: upcomingMatches = [] } = trpc.matches.getUpcoming.useQuery(
     {
       categoryId: selectedCategory || 0,
       modeId: selectedMode,
-      hoursAhead: 10,
+      hoursAhead: 999999, // Fetch all future matches
     },
     { enabled: !!selectedCategory }
   );

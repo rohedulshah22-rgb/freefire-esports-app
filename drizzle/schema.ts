@@ -159,6 +159,7 @@ export const matches = mysqlTable("matches", {
     "active",
     "completed",
     "cancelled",
+    "expired",
   ]).default("scheduled").notNull(),
   
   // Entry fee and prize pool

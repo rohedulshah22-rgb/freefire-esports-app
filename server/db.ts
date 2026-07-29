@@ -1,4 +1,4 @@
-import { eq, and, desc, gte, lte, lt } from "drizzle-orm";
+import { and, eq, gte, lte, lt, desc } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   InsertUser,
@@ -246,18 +246,28 @@ export async function createMatch(match: InsertMatch): Promise<number> {
 export async function getUpcomingMatches(
   categoryId: number,
   modeId?: number,
-  hoursAhead: number = 10
+  hoursAhead: number = 999999 // Fetch all future matches by default
 ) {
   const db = await getDb();
   if (!db) return [];
 
   const now = new Date();
-  const futureTime = new Date(now.getTime() + hoursAhead * 60 * 60 * 1000);
 
+  // Auto-expire past matches: mark any match with start time in the past as expired
+  await db
+    .update(matches)
+    .set({ status: "expired" })
+    .where(
+      and(
+        eq(matches.status, "scheduled"),
+        lt(matches.scheduledStartTime, now)
+      )
+    );
+
+  // Fetch all future matches (no time window restriction)
   const conditions = [
     eq(matchCategories.id, categoryId),
     gte(matches.scheduledStartTime, now),
-    lte(matches.scheduledStartTime, futureTime),
     eq(matches.status, "scheduled"),
   ];
 
@@ -277,7 +287,7 @@ export async function getUpcomingMatches(
     .where(and(...conditions))
     .orderBy(matches.scheduledStartTime);
   
-  console.log(`[getUpcomingMatches] CategoryID=${categoryId}, ModeID=${modeId}, TimeWindow=${now.toISOString()} to ${futureTime.toISOString()}, Found=${results.length} matches`);
+  console.log(`[getUpcomingMatches] CategoryID=${categoryId}, ModeID=${modeId}, FetchedAt=${now.toISOString()}, Found=${results.length} future matches`);
   return results;
 }
 

@@ -4,7 +4,7 @@ import {
 } from "./_core/cookies";
 import { getDb } from "./db";
 import { matches, referrals } from "../drizzle/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and, gte, lt } from "drizzle-orm";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router, protectedProcedure } from "./_core/trpc";
 import { z } from "zod";
@@ -301,11 +301,29 @@ export const appRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
-      // Get active matches (scheduled status)
+      const now = new Date();
+
+      // Auto-expire past matches
+      await db
+        .update(matches)
+        .set({ status: "expired" })
+        .where(
+          and(
+            eq(matches.status, "scheduled"),
+            lt(matches.scheduledStartTime, now)
+          )
+        );
+
+      // Get active matches (scheduled status only, excluding expired)
       const activeMatches = await db
         .select()
         .from(matches)
-        .where(eq(matches.status, "scheduled"));
+        .where(
+          and(
+            eq(matches.status, "scheduled"),
+            gte(matches.scheduledStartTime, now)
+          )
+        );
 
       console.log(`[Admin Stats] Active Matches: ${activeMatches.length}`);
 

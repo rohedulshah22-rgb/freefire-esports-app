@@ -1,0 +1,1 @@
+ALTER TABLE `matches` MODIFY COLUMN `status` enum('scheduled','active','completed','cancelled','expired') NOT NULL DEFAULT 'scheduled';
