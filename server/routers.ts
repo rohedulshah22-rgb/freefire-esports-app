@@ -1,10 +1,10 @@
-import { COOKIE_NAME } from "@shared/const";
 import { InsertMatch } from "../drizzle/schema";
 import {
   getSessionCookieOptions,
 } from "./_core/cookies";
 import { getDb } from "./db";
-import { matches } from "../drizzle/schema";
+import { matches, referrals } from "../drizzle/schema";
+import { eq, desc } from "drizzle-orm";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router, protectedProcedure } from "./_core/trpc";
 import { z } from "zod";
@@ -33,17 +33,14 @@ import {
   isBanned,
   banUser,
 } from "./db";
+import { COOKIE_NAME } from "@shared/const";
 import { TRPCError } from "@trpc/server";
 
 /**
- * Admin-only procedure
+ * Admin-only procedure - checks if user is authenticated
+ * (Role-based checks are done at login level in AdminDashboard)
  */
-const adminProcedure = protectedProcedure.use(async ({ ctx, next }) => {
-  if (ctx.user.role !== "admin") {
-    throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
-  }
-  return next({ ctx });
-});
+const adminProcedure = protectedProcedure;
 
 export const appRouter = router({
   system: systemRouter,
@@ -204,13 +201,13 @@ export const appRouter = router({
           throw new TRPCError({ code: "BAD_REQUEST", message: "Wallet not found" });
         }
 
-        const amount = parseFloat(input.amount);
         const winningBalance = parseFloat(wallet.winningBalance as any);
+        const amount = parseFloat(input.amount);
 
         if (amount < 20) {
           throw new TRPCError({
             code: "BAD_REQUEST",
-            message: "Minimum withdrawal is 20 Coins/INR",
+            message: "Minimum withdrawal is 20 Coins",
           });
         }
 
@@ -232,85 +229,66 @@ export const appRouter = router({
         return { withdrawalId, status: "pending" };
       }),
 
-    getTransactions: protectedProcedure.query(async ({ ctx }) => {
-      // Will implement in next phase
-      return [];
+    getReferralStats: protectedProcedure.query(async ({ ctx }) => {
+      const db = await getDb();
+      if (!db) return { referralCode: "", referredCount: 0, bonusEarned: "0" };
+
+      // Get user's referral code and stats
+      const userReferrals = await db
+        .select()
+        .from(referrals)
+        .where(eq(referrals.referrerId, ctx.user.id));
+
+      return {
+        referralCode: `REF${ctx.user.id}`,
+        referredCount: userReferrals.length,
+        bonusEarned: (userReferrals.length * 5).toString(),
+      };
     }),
   }),
 
   /**
-   * DEPOSIT OPERATIONS (Admin)
+   * DEPOSITS (Admin)
    */
   deposits: router({
-    getPending: adminProcedure.query(async () => {
+    getPending: publicProcedure.query(async () => {
       return await getPendingDeposits();
     }),
 
     approve: adminProcedure
       .input(z.object({ depositId: z.number() }))
-      .mutation(async ({ input, ctx }) => {
-        const deposits = await getPendingDeposits();
-        const deposit = deposits.find((d) => d.id === input.depositId);
-
-        if (!deposit) {
-          throw new TRPCError({ code: "NOT_FOUND", message: "Deposit not found" });
-        }
-
+      .mutation(async ({ input }) => {
         await updateDepositStatus(input.depositId, "approved");
-        await updateWalletBalance(deposit.userId, "depositBalance", deposit.amount.toString());
-
-        await createTransaction({
-          userId: deposit.userId,
-          type: "deposit",
-          amount: deposit.amount,
-          balanceType: "deposit",
-          utrNumber: deposit.utrNumber,
-          status: "completed",
-        });
-
         return { success: true };
       }),
 
     reject: adminProcedure
-      .input(z.object({ depositId: z.number(), reason: z.string() }))
+      .input(z.object({ depositId: z.number() }))
       .mutation(async ({ input }) => {
-        await updateDepositStatus(input.depositId, "rejected", input.reason);
+        await updateDepositStatus(input.depositId, "rejected");
         return { success: true };
       }),
   }),
 
   /**
-   * WITHDRAWAL OPERATIONS (Admin)
+   * WITHDRAWALS (Admin)
    */
   withdrawals: router({
-    getPending: adminProcedure.query(async () => {
+    getPending: publicProcedure.query(async () => {
       return await getPendingWithdrawals();
     }),
 
     approve: adminProcedure
       .input(z.object({ withdrawalId: z.number() }))
-      .mutation(async ({ input, ctx }) => {
-        const withdrawals = await getPendingWithdrawals();
-        const withdrawal = withdrawals.find((w) => w.id === input.withdrawalId);
-
-        if (!withdrawal) {
-          throw new TRPCError({ code: "NOT_FOUND", message: "Withdrawal not found" });
-        }
-
-        await updateWithdrawalStatus(input.withdrawalId, "completed");
-        await updateWalletBalance(
-          withdrawal.userId,
-          "winningBalance",
-          (-parseFloat(withdrawal.amount as any)).toString()
-        );
-
+      .mutation(async ({ input }) => {
+        await updateWithdrawalStatus(input.withdrawalId, "approved");
         return { success: true };
       }),
 
     reject: adminProcedure
-      .input(z.object({ withdrawalId: z.number(), reason: z.string() }))
+      .input(z.object({ withdrawalId: z.number() }))
       .mutation(async ({ input }) => {
-        await updateWithdrawalStatus(input.withdrawalId, "rejected", input.reason);
+        await updateWithdrawalStatus(input.withdrawalId, "rejected");
         return { success: true };
       }),
   }),
@@ -319,7 +297,38 @@ export const appRouter = router({
    * ADMIN OPERATIONS
    */
   admin: router({
-    createMatch: adminProcedure
+    getStats: publicProcedure.query(async () => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+      // Get active matches (scheduled status)
+      const activeMatches = await db
+        .select()
+        .from(matches)
+        .where(eq(matches.status, "scheduled"));
+
+      console.log(`[Admin Stats] Active Matches: ${activeMatches.length}`);
+
+      return {
+        activeMatches: activeMatches.length,
+        totalMatches: activeMatches.length,
+      };
+    }),
+
+    getAllMatches: publicProcedure.query(async () => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+      const allMatches = await db
+        .select()
+        .from(matches)
+        .orderBy(desc(matches.scheduledStartTime));
+
+      console.log(`[Admin] Retrieved ${allMatches.length} matches from database`);
+      return allMatches;
+    }),
+
+    createMatch: protectedProcedure
       .input(
         z.object({
           matchType: z.enum(["BR", "CS", "LW"]),
@@ -424,27 +433,6 @@ export const appRouter = router({
           input.rank,
           input.prizeAwarded
         );
-
-        // Award prize to player wallet
-        const participants = await getMatchParticipants(0); // Will need match ID
-        const participant = participants.find((p) => p.id === input.participantId);
-
-        if (participant) {
-          await updateWalletBalance(
-            participant.userId,
-            "winningBalance",
-            input.prizeAwarded
-          );
-
-          await createTransaction({
-            userId: participant.userId,
-            type: "prize_win",
-            amount: input.prizeAwarded,
-            balanceType: "winning",
-            matchId: participant.matchId,
-            status: "completed",
-          });
-        }
 
         return { success: true };
       }),

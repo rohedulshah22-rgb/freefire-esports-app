@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -279,6 +279,12 @@ function AdminDashboardContent() {
   // Fetch pending withdrawals
   const { data: pendingWithdrawals = [] } = trpc.withdrawals.getPending.useQuery();
 
+  // Fetch admin stats (active matches count)
+  const { data: adminStats = { activeMatches: 0, totalMatches: 0 } } = trpc.admin.getStats.useQuery();
+
+  // Get trpc utils for cache invalidation
+  const utils = trpc.useUtils();
+
   // Approve deposit mutation
   const approveDepositMutation = trpc.deposits.approve.useMutation({
     onSuccess: () => {
@@ -306,6 +312,15 @@ function AdminDashboardContent() {
       alert("Withdrawal rejected!");
     },
   });
+
+  // Auto-refresh stats every 5 seconds
+  React.useEffect(() => {
+    const interval = setInterval(() => {
+      utils.admin.getStats.invalidate();
+      utils.matches.getUpcoming.invalidate();
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [utils]);
 
   const handleLogout = () => {
     localStorage.removeItem("adminLoggedIn");
@@ -360,7 +375,7 @@ function AdminDashboardContent() {
               <Trophy className="h-8 w-8 text-secondary" />
               <div>
                 <p className="text-xs text-muted-foreground">Active Matches</p>
-                <p className="text-2xl font-bold text-secondary">0</p>
+                <p className="text-2xl font-bold text-secondary">{adminStats.activeMatches}</p>
               </div>
             </div>
           </Card>
@@ -423,7 +438,6 @@ function AdminDashboardContent() {
                               onClick={() =>
                                 rejectDepositMutation.mutate({
                                   depositId: deposit.id,
-                                  reason: "Admin rejection",
                                 })
                               }
                               disabled={rejectDepositMutation.isPending}
@@ -490,7 +504,6 @@ function AdminDashboardContent() {
                               onClick={() =>
                                 rejectWithdrawalMutation.mutate({
                                   withdrawalId: withdrawal.id,
-                                  reason: "Admin rejection",
                                 })
                               }
                               disabled={rejectWithdrawalMutation.isPending}
