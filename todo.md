@@ -130,3 +130,12 @@
 - [x] Create admin credentials and documentation
 - [x] Final security audit
 - [x] Deploy to production
+
+## Phase 18: Users Management (Admin)
+- [x] Add backend procedure to list all users with wallet balances
+- [x] Add backend mutation for manual coin adjustment (add/deduct)
+- [x] Create Users Management tab in Admin Dashboard
+- [x] Implement user search/filter functionality
+- [x] Build Add/Deduct Coins modal for each user
+- [x] Add transaction logging for manual adjustments
+- [x] Verify existing UTR deposit flow remains untouched

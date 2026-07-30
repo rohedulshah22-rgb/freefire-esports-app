@@ -22,11 +22,22 @@ import {
   Users,
   Trophy,
   LogOut,
+  Plus,
+  Minus,
+  Search,
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useLocation } from "wouter";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 /**
  * Create Match Form Component
@@ -191,6 +202,209 @@ function CreateMatchForm() {
       >
         {createMatchMutation.isPending ? "Creating Match..." : "Create Match"}
       </Button>
+    </div>
+  );
+}
+
+/**
+ * Users Management Component
+ */
+function UsersManagement() {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedUser, setSelectedUser] = useState<any>(null);
+  const [adjustDialogOpen, setAdjustDialogOpen] = useState(false);
+  const [adjustType, setAdjustType] = useState<"add" | "deduct">("add");
+  const [balanceType, setBalanceType] = useState<"depositBalance" | "winningBalance" | "bonusBalance">("bonusBalance");
+  const [adjustAmount, setAdjustAmount] = useState("");
+  const [adjustReason, setAdjustReason] = useState("");
+
+  // Fetch all users with wallets
+  const { data: allUsers = [] } = trpc.users.getAllWithWallets.useQuery();
+
+  // Adjust balance mutation
+  const adjustBalanceMutation = trpc.users.adjustBalance.useMutation({
+    onSuccess: () => {
+      toast.success("Wallet adjusted successfully!");
+      setAdjustDialogOpen(false);
+      setAdjustAmount("");
+      setAdjustReason("");
+      setSelectedUser(null);
+    },
+    onError: (error: any) => {
+      toast.error(error.message || "Failed to adjust balance");
+    },
+  });
+
+  // Filter users based on search
+  const filteredUsers = allUsers.filter((user) =>
+    user.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    user.email?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const handleAdjustBalance = () => {
+    if (!selectedUser || !adjustAmount || !adjustReason) {
+      toast.error("Please fill in all fields");
+      return;
+    }
+
+    const amount = adjustType === "add" ? adjustAmount : `-${adjustAmount}`;
+    adjustBalanceMutation.mutate({
+      userId: selectedUser.id,
+      balanceType,
+      amount,
+      description: `${adjustType === "add" ? "Added" : "Deducted"} ${adjustAmount} coins - ${adjustReason}`,
+    });
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Search Bar */}
+      <div className="flex gap-2">
+        <div className="flex-1 relative">
+          <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search by username or email..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="input-gaming pl-10"
+          />
+        </div>
+      </div>
+
+      {/* Users Table */}
+      {filteredUsers.length > 0 ? (
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Username</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>Deposit Balance</TableHead>
+                <TableHead>Winning Balance</TableHead>
+                <TableHead>Bonus Balance</TableHead>
+                <TableHead>Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredUsers.map((user) => (
+                <TableRow key={user.id}>
+                  <TableCell className="font-semibold">{user.name || "N/A"}</TableCell>
+                  <TableCell className="text-sm">{user.email || "N/A"}</TableCell>
+                  <TableCell className="font-mono">{user.depositBalance || "0.00"}</TableCell>
+                  <TableCell className="font-mono text-accent">{user.winningBalance || "0.00"}</TableCell>
+                  <TableCell className="font-mono text-secondary">{user.bonusBalance || "0.00"}</TableCell>
+                  <TableCell>
+                    <Button
+                      size="sm"
+                      className="btn-neon"
+                      onClick={() => {
+                        setSelectedUser(user);
+                        setAdjustDialogOpen(true);
+                      }}
+                    >
+                      Adjust Coins
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      ) : (
+        <p className="text-center text-muted-foreground py-8">No users found</p>
+      )}
+
+      {/* Adjust Balance Dialog */}
+      <Dialog open={adjustDialogOpen} onOpenChange={setAdjustDialogOpen}>
+        <DialogContent className="card-gaming">
+          <DialogHeader>
+            <DialogTitle>Adjust Wallet Balance</DialogTitle>
+            <DialogDescription>
+              {selectedUser?.name && `User: ${selectedUser.name}`}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {/* Operation Type */}
+            <div>
+              <label className="block text-sm font-semibold mb-2">Operation</label>
+              <div className="flex gap-2">
+                <Button
+                  variant={adjustType === "add" ? "default" : "outline"}
+                  className={adjustType === "add" ? "bg-green-600" : ""}
+                  onClick={() => setAdjustType("add")}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Coins
+                </Button>
+                <Button
+                  variant={adjustType === "deduct" ? "default" : "outline"}
+                  className={adjustType === "deduct" ? "bg-red-600" : ""}
+                  onClick={() => setAdjustType("deduct")}
+                >
+                  <Minus className="h-4 w-4 mr-2" />
+                  Deduct Coins
+                </Button>
+              </div>
+            </div>
+
+            {/* Balance Type */}
+            <div>
+              <label className="block text-sm font-semibold mb-2">Balance Type</label>
+              <Select value={balanceType} onValueChange={(v: any) => setBalanceType(v)}>
+                <SelectTrigger className="input-gaming">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="depositBalance">Deposit Balance</SelectItem>
+                  <SelectItem value="winningBalance">Winning Balance</SelectItem>
+                  <SelectItem value="bonusBalance">Bonus Balance</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Amount */}
+            <div>
+              <label className="block text-sm font-semibold mb-2">Amount (Coins)</label>
+              <Input
+                type="number"
+                placeholder="Enter amount"
+                value={adjustAmount}
+                onChange={(e) => setAdjustAmount(e.target.value)}
+                className="input-gaming"
+              />
+            </div>
+
+            {/* Reason */}
+            <div>
+              <label className="block text-sm font-semibold mb-2">Reason</label>
+              <Input
+                type="text"
+                placeholder="e.g., Bonus for referral, Compensation for issue"
+                value={adjustReason}
+                onChange={(e) => setAdjustReason(e.target.value)}
+                className="input-gaming"
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setAdjustDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              className="btn-neon"
+              onClick={handleAdjustBalance}
+              disabled={adjustBalanceMutation.isPending}
+            >
+              {adjustBalanceMutation.isPending ? "Processing..." : "Confirm Adjustment"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -383,8 +597,9 @@ function AdminDashboardContent() {
 
         {/* Tabs */}
         <Tabs defaultValue="deposits" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="create-match">Create Match</TabsTrigger>
+            <TabsTrigger value="users">Users Management</TabsTrigger>
             <TabsTrigger value="deposits">Deposits</TabsTrigger>
             <TabsTrigger value="withdrawals">Withdrawals</TabsTrigger>
             <TabsTrigger value="results">Match Results</TabsTrigger>
@@ -395,6 +610,17 @@ function AdminDashboardContent() {
             <Card className="card-gaming">
               <h2 className="mb-6 text-lg font-bold">Create New Match</h2>
               <CreateMatchForm />
+            </Card>
+          </TabsContent>
+
+          {/* Users Management Tab */}
+          <TabsContent value="users" className="mt-6">
+            <Card className="card-gaming">
+              <h2 className="mb-4 text-lg font-bold flex items-center gap-2">
+                <Users className="h-5 w-5" />
+                Users Management
+              </h2>
+              <UsersManagement />
             </Card>
           </TabsContent>
 

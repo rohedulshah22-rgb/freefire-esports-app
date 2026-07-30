@@ -525,3 +525,56 @@ export async function banUser(
     .set({ isBanned: true, banReason: reason })
     .where(eq(users.id, userId));
 }
+
+/**
+ * USER MANAGEMENT OPERATIONS (Admin)
+ */
+export async function getAllUsersWithWallets() {
+  const db = await getDb();
+  if (!db) return [];
+
+  const result = await db
+    .select({
+      id: users.id,
+      name: users.name,
+      email: users.email,
+      depositBalance: wallets.depositBalance,
+      winningBalance: wallets.winningBalance,
+      bonusBalance: wallets.bonusBalance,
+      createdAt: users.createdAt,
+    })
+    .from(users)
+    .leftJoin(wallets, eq(users.id, wallets.userId))
+    .orderBy(desc(users.createdAt));
+
+  return result;
+}
+
+export async function adjustUserBalance(
+  userId: number,
+  balanceType: "depositBalance" | "winningBalance" | "bonusBalance",
+  amount: string,
+  description: string
+): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  // Update wallet balance
+  await updateWalletBalance(userId, balanceType, amount);
+
+  // Create transaction record for audit trail
+  const balanceTypeMap = {
+    depositBalance: "deposit",
+    winningBalance: "winning",
+    bonusBalance: "bonus",
+  };
+
+  await createTransaction({
+    userId,
+    type: "admin_adjustment",
+    amount,
+    balanceType: balanceTypeMap[balanceType] as "deposit" | "winning" | "bonus",
+    status: "completed",
+    description,
+  });
+}

@@ -80,6 +80,7 @@ export const transactions = mysqlTable("transactions", {
     "prize_win",
     "refund",
     "referral_bonus",
+    "admin_adjustment",
   ]).notNull(),
   
   amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),

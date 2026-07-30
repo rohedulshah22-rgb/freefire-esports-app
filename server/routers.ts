@@ -1,9 +1,8 @@
-import { InsertMatch } from "../drizzle/schema";
 import {
   getSessionCookieOptions,
 } from "./_core/cookies";
 import { getDb } from "./db";
-import { matches, referrals } from "../drizzle/schema";
+import { matches, referrals, deposits } from "../drizzle/schema";
 import { eq, desc, and, gte, lt } from "drizzle-orm";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router, protectedProcedure } from "./_core/trpc";
@@ -32,6 +31,9 @@ import {
   getPlayerMatches,
   isBanned,
   banUser,
+  getAllUsersWithWallets,
+  adjustUserBalance,
+  getUserTransactions,
 } from "./db";
 import { COOKIE_NAME } from "@shared/const";
 import { TRPCError } from "@trpc/server";
@@ -104,54 +106,14 @@ export const appRouter = router({
           });
         }
 
-        const match = await getMatchById(input.matchId);
-        if (!match) {
-          throw new TRPCError({ code: "NOT_FOUND", message: "Match not found" });
-        }
-
-        const wallet = await getWallet(userId);
-        if (!wallet) {
-          throw new TRPCError({ code: "BAD_REQUEST", message: "Wallet not found" });
-        }
-
-        const entryFee = parseFloat(match.entryFee as any);
-        const depositBalance = parseFloat(wallet.depositBalance as any);
-
-        if (depositBalance < entryFee) {
-          throw new TRPCError({
-            code: "BAD_REQUEST",
-            message: "Insufficient balance",
-          });
-        }
-
-        // Deduct entry fee from deposit balance
-        await updateWalletBalance(userId, "depositBalance", (-entryFee).toString());
-
-        // Join match
-        await joinMatch(input.matchId, userId, match.entryFee);
-
-        // Create transaction
-        await createTransaction({
-          userId,
-          type: "match_entry",
-          amount: match.entryFee,
-          balanceType: "deposit",
-          matchId: input.matchId,
-          status: "completed",
-        });
-
-        return { success: true };
+        return await joinMatch(input.matchId, userId, "0");
       }),
 
-    getParticipants: publicProcedure
+    getById: publicProcedure
       .input(z.object({ matchId: z.number() }))
       .query(async ({ input }) => {
-        return await getMatchParticipants(input.matchId);
+        return await getMatchById(input.matchId);
       }),
-
-    getPlayerMatches: protectedProcedure.query(async ({ ctx }) => {
-      return await getPlayerMatches(ctx.user.id);
-    }),
   }),
 
   /**
@@ -159,91 +121,20 @@ export const appRouter = router({
    */
   wallet: router({
     getBalance: protectedProcedure.query(async ({ ctx }) => {
-      let wallet = await getWallet(ctx.user.id);
+      const userId = ctx.user.id;
+      let wallet = await getWallet(userId);
 
       if (!wallet) {
-        await createWallet(ctx.user.id);
-        wallet = await getWallet(ctx.user.id);
+        await createWallet(userId);
+        wallet = await getWallet(userId);
       }
 
       return wallet;
     }),
 
-    addMoney: protectedProcedure
-      .input(
-        z.object({
-          amount: z.string(),
-          utrNumber: z.string().length(12),
-        })
-      )
-      .mutation(async ({ input, ctx }) => {
-        const depositId = await createDeposit({
-          userId: ctx.user.id,
-          amount: input.amount,
-          utrNumber: input.utrNumber,
-          status: "pending",
-        });
-
-        return { depositId, status: "pending" };
-      }),
-
-    withdraw: protectedProcedure
-      .input(
-        z.object({
-          amount: z.string(),
-          payoutMethod: z.enum(["upi", "google_play"]),
-          payoutDetails: z.string(),
-        })
-      )
-      .mutation(async ({ input, ctx }) => {
-        const wallet = await getWallet(ctx.user.id);
-        if (!wallet) {
-          throw new TRPCError({ code: "BAD_REQUEST", message: "Wallet not found" });
-        }
-
-        const winningBalance = parseFloat(wallet.winningBalance as any);
-        const amount = parseFloat(input.amount);
-
-        if (amount < 20) {
-          throw new TRPCError({
-            code: "BAD_REQUEST",
-            message: "Minimum withdrawal is 20 Coins",
-          });
-        }
-
-        if (winningBalance < amount) {
-          throw new TRPCError({
-            code: "BAD_REQUEST",
-            message: "Insufficient winning balance",
-          });
-        }
-
-        const withdrawalId = await createWithdrawal({
-          userId: ctx.user.id,
-          amount: input.amount,
-          payoutMethod: input.payoutMethod,
-          payoutDetails: input.payoutDetails,
-          status: "pending",
-        });
-
-        return { withdrawalId, status: "pending" };
-      }),
-
-    getReferralStats: protectedProcedure.query(async ({ ctx }) => {
-      const db = await getDb();
-      if (!db) return { referralCode: "", referredCount: 0, bonusEarned: "0" };
-
-      // Get user's referral code and stats
-      const userReferrals = await db
-        .select()
-        .from(referrals)
-        .where(eq(referrals.referrerId, ctx.user.id));
-
-      return {
-        referralCode: `REF${ctx.user.id}`,
-        referredCount: userReferrals.length,
-        bonusEarned: (userReferrals.length * 5).toString(),
-      };
+    getTransactionHistory: protectedProcedure.query(async ({ ctx }) => {
+      const userId = ctx.user.id;
+      return await getUserTransactions(userId);
     }),
   }),
 
@@ -258,7 +149,42 @@ export const appRouter = router({
     approve: adminProcedure
       .input(z.object({ depositId: z.number() }))
       .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+        // Get deposit details
+        const depositRecord = await db
+          .select()
+          .from(deposits)
+          .where(eq(deposits.id, input.depositId))
+          .limit(1);
+
+        if (depositRecord.length === 0) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Deposit not found" });
+        }
+
+        const deposit = depositRecord[0];
+        const userId = deposit.userId;
+        const amount = deposit.amount.toString();
+
+        // Update deposit status
         await updateDepositStatus(input.depositId, "approved");
+
+        // Credit the deposit balance to player's wallet
+        await updateWalletBalance(userId, "depositBalance", amount);
+
+        // Create transaction record
+        await createTransaction({
+          userId,
+          type: "deposit",
+          amount,
+          balanceType: "deposit",
+          status: "completed",
+          description: `Deposit approved - UTR: ${deposit.utrNumber}`,
+          utrNumber: deposit.utrNumber,
+        });
+
+        console.log(`[Deposits] Approved deposit ID ${input.depositId} for user ${userId}, credited ${amount} coins`);
         return { success: true };
       }),
 
@@ -289,6 +215,59 @@ export const appRouter = router({
       .input(z.object({ withdrawalId: z.number() }))
       .mutation(async ({ input }) => {
         await updateWithdrawalStatus(input.withdrawalId, "rejected");
+        return { success: true };
+      }),
+  }),
+
+  /**
+   * USERS MANAGEMENT (Admin)
+   */
+  users: router({
+    getAllWithWallets: adminProcedure.query(async () => {
+      return await getAllUsersWithWallets();
+    }),
+
+    adjustBalance: adminProcedure
+      .input(
+        z.object({
+          userId: z.number(),
+          balanceType: z.enum(["depositBalance", "winningBalance", "bonusBalance"]),
+          amount: z.string(),
+          description: z.string(),
+        })
+      )
+      .mutation(async ({ input }) => {
+        // Validate amount is numeric
+        const numAmount = parseFloat(input.amount);
+        if (isNaN(numAmount)) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid amount" });
+        }
+
+        // Get user's wallet
+        const wallet = await getWallet(input.userId);
+        if (!wallet) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "User wallet not found" });
+        }
+
+        // Check if deduction would go negative
+        if (numAmount < 0) {
+          const currentBalance = parseFloat(wallet[input.balanceType] as any);
+          if (currentBalance + numAmount < 0) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: `Insufficient balance. Current: ${currentBalance}, Deduction: ${Math.abs(numAmount)}`,
+            });
+          }
+        }
+
+        await adjustUserBalance(
+          input.userId,
+          input.balanceType,
+          input.amount,
+          input.description
+        );
+
+        console.log(`[Users] Adjusted balance for user ${input.userId}: ${input.amount} coins on ${input.balanceType}`);
         return { success: true };
       }),
   }),
