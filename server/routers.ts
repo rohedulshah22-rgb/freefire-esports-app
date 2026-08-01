@@ -393,7 +393,7 @@ export const appRouter = router({
       .input(
         z.object({
           matchType: z.enum(["BR", "CS", "LW"]),
-          mode: z.enum(["1v1", "2v2", "4v4"]),
+          mode: z.enum(["Solo", "Duo", "Squad", "1v1", "2v2", "4v4"]),
           matchTitle: z.string().optional(),
           mapName: z.string(),
           entryFee: z.number(),
@@ -422,12 +422,12 @@ export const appRouter = router({
           });
         }
 
-        // Get mode ID
+        // Get mode ID - validate mode matches category
         const modes = await getMatchModesByCategory(category.id);
         const modeObj = modes.find((m) => m.name === input.mode);
         if (!modeObj) {
           throw new TRPCError({
-            code: "NOT_FOUND",
+            code: "BAD_REQUEST",
             message: `Mode ${input.mode} not found for category ${input.matchType}`,
           });
         }

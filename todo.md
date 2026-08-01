@@ -148,4 +148,10 @@
 - [x] Add join procedure with player details validation
 - [x] Update match joining to deduct entry fee and record player info
 - [x] Display match rules in join modal
-- [ ] Test BR mode creation and joining flow
+- [x] Test BR mode creation and joining flow
+
+## Phase 20: Admin Match Creation Dropdown Fix
+- [x] Update Mode dropdown to show BR modes (Solo, Duo, Squad) when BR is selected
+- [x] Update Mode dropdown to show CS/LW modes (1v1, 2v2, 4v4) for other categories
+- [x] Ensure selected mode value is correctly sent to backend
+- [x] Test admin match creation with different category selections

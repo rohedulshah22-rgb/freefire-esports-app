@@ -16,7 +16,7 @@ interface AdminMatchCreationProps {
 export default function AdminMatchCreation({ onMatchCreated }: AdminMatchCreationProps) {
   const [open, setOpen] = useState(false);
   const [matchType, setMatchType] = useState<"BR" | "CS" | "LW">("BR");
-  const [mode, setMode] = useState<"1v1" | "2v2" | "4v4">("1v1");
+  const [mode, setMode] = useState<string>("Solo");
   const [map, setMap] = useState("");
   const [entryFee, setEntryFee] = useState("");
   const [totalSlots, setTotalSlots] = useState("");
@@ -38,13 +38,23 @@ export default function AdminMatchCreation({ onMatchCreated }: AdminMatchCreatio
 
   const resetForm = () => {
     setMatchType("BR");
-    setMode("1v1");
+    setMode("Solo");
     setMap("");
     setEntryFee("");
     setTotalSlots("");
     setPrizePool("");
     setPerKillReward("2");
     setMatchTime("");
+  };
+
+  // Handle matchType change and reset mode to first available option
+  const handleMatchTypeChange = (v: string) => {
+    setMatchType(v as any);
+    if (v === "BR") {
+      setMode("Solo");
+    } else {
+      setMode("1v1");
+    }
   };
 
   const handleCreateMatch = () => {
@@ -66,12 +76,18 @@ export default function AdminMatchCreation({ onMatchCreated }: AdminMatchCreatio
   };
 
   const getModeOptions = () => {
-    if (matchType === "BR") return ["1v1"];
+    if (matchType === "BR") return ["Solo", "Duo", "Squad"];
     if (matchType === "CS") return ["1v1", "2v2", "4v4"];
+    if (matchType === "LW") return ["1v1"];
     return ["1v1"];
   };
 
   const getTotalSlotsDefault = () => {
+    // BR modes
+    if (mode === "Solo") return "100";
+    if (mode === "Duo") return "100";
+    if (mode === "Squad") return "100";
+    // CS modes
     if (mode === "1v1") return "2";
     if (mode === "2v2") return "4";
     if (mode === "4v4") return "8";
@@ -99,7 +115,7 @@ export default function AdminMatchCreation({ onMatchCreated }: AdminMatchCreatio
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label>Match Type</Label>
-              <Select value={matchType} onValueChange={(v) => setMatchType(v as any)}>
+              <Select value={matchType} onValueChange={handleMatchTypeChange}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
