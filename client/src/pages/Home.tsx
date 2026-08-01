@@ -7,6 +7,8 @@ import { AlertCircle, Zap, Users, Trophy, Wallet } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useState, useEffect } from "react";
 import { getLoginUrl } from "@/const";
+import { PlayerJoinForm } from "@/components/PlayerJoinForm";
+import { toast } from "sonner";
 
 /**
  * Multi-language UTR warning component
@@ -196,15 +198,35 @@ export default function Home() {
     enabled: isAuthenticated,
   });
 
+  // State for join form modal
+  const [joinFormOpen, setJoinFormOpen] = useState(false);
+  const [selectedMatchForJoin, setSelectedMatchForJoin] = useState<any>(null);
+
   // Join match mutation
   const joinMutation = trpc.matches.join.useMutation({
     onSuccess: () => {
-      alert("Successfully joined match!");
+      toast.success("Successfully joined match!");
+      setJoinFormOpen(false);
+      setSelectedMatchForJoin(null);
     },
-    onError: (error) => {
-      alert(`Error: ${error.message}`);
+    onError: (error: any) => {
+      toast.error(error.message || "Failed to join match");
     },
   });
+
+  const handleJoinClick = (match: any) => {
+    setSelectedMatchForJoin(match);
+    setJoinFormOpen(true);
+  };
+
+  const handleConfirmJoin = async (ign: string, uid: string) => {
+    if (!selectedMatchForJoin) return;
+    joinMutation.mutate({
+      matchId: selectedMatchForJoin.match.id,
+      freeFireIGN: ign,
+      freeFireUID: uid,
+    });
+  };
 
   if (loading) {
     return (
@@ -340,7 +362,7 @@ export default function Home() {
                     <MatchCard
                       key={match.match.id}
                       match={match}
-                      onJoin={(matchId) => joinMutation.mutate({ matchId })}
+                      onJoin={() => handleJoinClick(match)}
                     />
                   ))}
                 </div>
@@ -353,6 +375,18 @@ export default function Home() {
           </div>
         )}
       </div>
+
+      {/* Player Join Form Modal */}
+      {selectedMatchForJoin && (
+        <PlayerJoinForm
+          open={joinFormOpen}
+          onOpenChange={setJoinFormOpen}
+          matchTitle={`${selectedMatchForJoin.match.categoryId} - ${selectedMatchForJoin.mode.name}`}
+          entryFee={parseFloat(selectedMatchForJoin.match.entryFee)}
+          onConfirm={handleConfirmJoin}
+          isLoading={joinMutation.isPending}
+        />
+      )}
 
       {/* Floating WhatsApp Button */}
       <a

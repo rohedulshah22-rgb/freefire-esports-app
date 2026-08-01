@@ -205,10 +205,10 @@ export async function initializeMatchModes(): Promise<void> {
   if (!brCat || !csCat || !lwCat) throw new Error("Categories not found");
 
   await db.insert(matchModes).values([
-    // BR modes
-    { categoryId: brCat.id, name: "1v1", teamSize: 1, maxPlayers: 2, entryFee: "100" },
-    { categoryId: brCat.id, name: "2v2", teamSize: 2, maxPlayers: 4, entryFee: "150" },
-    { categoryId: brCat.id, name: "4v4", teamSize: 4, maxPlayers: 8, entryFee: "200" },
+    // BR modes: Solo, Duo, Squad
+    { categoryId: brCat.id, name: "Solo", teamSize: 1, maxPlayers: 100, entryFee: "100" },
+    { categoryId: brCat.id, name: "Duo", teamSize: 2, maxPlayers: 100, entryFee: "150" },
+    { categoryId: brCat.id, name: "Squad", teamSize: 4, maxPlayers: 100, entryFee: "200" },
     // CS modes
     { categoryId: csCat.id, name: "1v1", teamSize: 1, maxPlayers: 2, entryFee: "80" },
     { categoryId: csCat.id, name: "2v2", teamSize: 2, maxPlayers: 4, entryFee: "120" },
@@ -317,7 +317,9 @@ export async function updateMatch(matchId: number, updates: Partial<typeof match
 export async function joinMatch(
   matchId: number,
   userId: number,
-  entryFeeDeducted: string
+  entryFeeDeducted: string,
+  freeFireIGN?: string,
+  freeFireUID?: string
 ): Promise<void> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -327,6 +329,8 @@ export async function joinMatch(
     userId,
     status: "joined",
     entryFeeDeducted,
+    freeFireIGN: freeFireIGN || null,
+    freeFireUID: freeFireUID || null,
   });
 
   // Increment match player count

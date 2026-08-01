@@ -139,3 +139,13 @@
 - [x] Build Add/Deduct Coins modal for each user
 - [x] Add transaction logging for manual adjustments
 - [x] Verify existing UTR deposit flow remains untouched
+
+## Phase 19: BR Modes Fix & Enhanced Join Flow
+- [x] Fix BR category modes: Solo, Duo, Squad (remove 1v1, 2v2, 4v4)
+- [x] Update matchModes initialization to use correct BR modes
+- [x] Add Free Fire IGN and UID fields to matchParticipants table
+- [x] Create player details modal form component
+- [x] Add join procedure with player details validation
+- [x] Update match joining to deduct entry fee and record player info
+- [x] Display match rules in join modal
+- [ ] Test BR mode creation and joining flow

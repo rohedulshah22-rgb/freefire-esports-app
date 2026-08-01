@@ -194,6 +194,10 @@ export const matchParticipants = mysqlTable("matchParticipants", {
   matchId: int("matchId").notNull(),
   userId: int("userId").notNull(),
   
+  // Player Free Fire details
+  freeFireIGN: varchar("freeFireIGN", { length: 32 }),
+  freeFireUID: varchar("freeFireUID", { length: 32 }),
+  
   // Participation state
   status: mysqlEnum("status", [
     "joined",

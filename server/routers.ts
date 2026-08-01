@@ -94,7 +94,11 @@ export const appRouter = router({
       }),
 
     join: protectedProcedure
-      .input(z.object({ matchId: z.number() }))
+      .input(z.object({ 
+        matchId: z.number(),
+        freeFireIGN: z.string().min(1, "Free Fire IGN is required"),
+        freeFireUID: z.string().min(1, "Free Fire UID is required"),
+      }))
       .mutation(async ({ input, ctx }) => {
         const userId = ctx.user.id;
 
@@ -106,7 +110,67 @@ export const appRouter = router({
           });
         }
 
-        return await joinMatch(input.matchId, userId, "0");
+        // Get match details
+        const match = await getMatchById(input.matchId);
+        if (!match) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Match not found" });
+        }
+
+        // Check if match is still accepting players
+        if (match.status !== "scheduled") {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Match is not accepting players" });
+        }
+
+        // Check if player already joined
+        const participants = await getMatchParticipants(input.matchId);
+        if (participants.some((p) => p.userId === userId)) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "You have already joined this match" });
+        }
+
+        // Check if match is full
+        if (participants.length >= match.totalSlots) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Match is full" });
+        }
+
+        // Get player wallet
+        const wallet = await getWallet(userId);
+        if (!wallet) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Player wallet not found" });
+        }
+
+        // Check if player has enough balance
+        const entryFee = parseFloat(match.entryFee);
+        const totalBalance = parseFloat(wallet.depositBalance) + parseFloat(wallet.bonusBalance);
+        if (totalBalance < entryFee) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Insufficient balance to join this match" });
+        }
+
+        // Deduct entry fee from wallet (prefer bonus balance first, then deposit)
+        let bonusToDeduct = Math.min(entryFee, parseFloat(wallet.bonusBalance));
+        let depositToDeduct = entryFee - bonusToDeduct;
+
+        if (bonusToDeduct > 0) {
+          await updateWalletBalance(userId, "bonusBalance", `-${bonusToDeduct}`);
+        }
+        if (depositToDeduct > 0) {
+          await updateWalletBalance(userId, "depositBalance", `-${depositToDeduct}`);
+        }
+
+        // Record player join with Free Fire details
+        await joinMatch(input.matchId, userId, match.entryFee, input.freeFireIGN, input.freeFireUID);
+
+        // Create transaction record
+        await createTransaction({
+          userId,
+          type: "match_entry",
+          amount: `-${entryFee}`,
+          balanceType: "deposit",
+          status: "completed",
+          description: `Entry fee for match ${input.matchId} - IGN: ${input.freeFireIGN}`,
+        });
+
+        console.log(`[Matches] Player ${userId} joined match ${input.matchId} with IGN: ${input.freeFireIGN}`);
+        return { success: true, matchId: input.matchId };
       }),
 
     getById: publicProcedure

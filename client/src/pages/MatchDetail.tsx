@@ -16,6 +16,8 @@ import {
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useLocation } from "wouter";
+import { PlayerJoinForm } from "@/components/PlayerJoinForm";
+import { toast } from "sonner";
 
 /**
  * Match detail and joining page
@@ -24,6 +26,7 @@ export default function MatchDetailPage() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
   const [isJoining, setIsJoining] = useState(false);
+  const [joinFormOpen, setJoinFormOpen] = useState(false);
 
   // Get match ID from URL params (simplified - in real app use proper routing)
   const matchId = "1"; // Placeholder
@@ -49,26 +52,28 @@ export default function MatchDetailPage() {
   // Join match mutation
   const joinMatchMutation = trpc.matches.join.useMutation({
     onSuccess: () => {
-      alert("Successfully joined the match!");
+      toast.success("Successfully joined the match!");
+      setIsJoining(false);
       setLocation("/");
     },
-    onError: (error) => {
-      alert(`Error: ${error.message}`);
+    onError: (error: any) => {
+      toast.error(error.message || "Failed to join match");
+      setIsJoining(false);
     },
   });
 
-  const handleJoinMatch = async () => {
+  const handleJoinMatch = async (ign: string, uid: string) => {
     if (!match || !wallet) {
-      alert("Missing match or wallet information");
+      toast.error("Missing match or wallet information");
       return;
     }
 
     const entryFee = parseFloat(match.entryFee);
-    const depositBalance = parseFloat(wallet.depositBalance);
+    const totalBalance = parseFloat(wallet.depositBalance) + parseFloat(wallet.bonusBalance);
 
-    if (depositBalance < entryFee) {
-      alert(
-        `Insufficient balance. You need ₹${entryFee} but have ₹${depositBalance}`
+    if (totalBalance < entryFee) {
+      toast.error(
+        `Insufficient balance. You need ${entryFee} coins but have ${totalBalance}`
       );
       return;
     }
@@ -76,6 +81,8 @@ export default function MatchDetailPage() {
     setIsJoining(true);
     joinMatchMutation.mutate({
       matchId: match.id,
+      freeFireIGN: ign,
+      freeFireUID: uid,
     });
   };
 
@@ -173,13 +180,23 @@ export default function MatchDetailPage() {
         {/* Join Button */}
         {!isMatchStarted && (
           <Button
-            onClick={handleJoinMatch}
+            onClick={() => setJoinFormOpen(true)}
             disabled={isJoining}
             className="w-full bg-accent hover:bg-accent/90 text-white font-bold py-3 text-lg"
           >
-            {isJoining ? "Joining..." : `Join Match - ₹${match.entryFee}`}
+            {isJoining ? "Joining..." : `Join Match - ${match.entryFee} Coins`}
           </Button>
         )}
+
+        {/* Player Join Form Modal */}
+        <PlayerJoinForm
+          open={joinFormOpen}
+          onOpenChange={setJoinFormOpen}
+          matchTitle={`${match.category} - ${match.mode}`}
+          entryFee={parseFloat(match.entryFee)}
+          onConfirm={handleJoinMatch}
+          isLoading={isJoining}
+        />
 
         {/* Tabs Section */}
         <Tabs defaultValue="details" className="w-full">
