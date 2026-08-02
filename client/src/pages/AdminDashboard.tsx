@@ -44,7 +44,7 @@ import {
  */
 function CreateMatchForm() {
   const [matchType, setMatchType] = useState<"BR" | "CS" | "LW">("BR");
-  const [mode, setMode] = useState<"1v1" | "2v2" | "4v4">("1v1");
+  const [mode, setMode] = useState<string>("Solo");
   const [matchTitle, setMatchTitle] = useState("");
   const [entryFee, setEntryFee] = useState("");
   const [prizePool, setPrizePool] = useState("");
@@ -87,9 +87,19 @@ function CreateMatchForm() {
   };
 
   const getModeOptions = () => {
-    if (matchType === "BR") return ["1v1"];
+    if (matchType === "BR") return ["Solo", "Duo", "Squad"];
     if (matchType === "CS") return ["1v1", "2v2", "4v4"];
+    if (matchType === "LW") return ["1v1"];
     return ["1v1"];
+  };
+
+  const handleMatchTypeChange = (v: string) => {
+    setMatchType(v as any);
+    if (v === "BR") {
+      setMode("Solo");
+    } else {
+      setMode("1v1");
+    }
   };
 
   return (
@@ -97,7 +107,7 @@ function CreateMatchForm() {
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-semibold mb-2">Match Type</label>
-          <Select value={matchType} onValueChange={(v) => setMatchType(v as any)}>
+          <Select value={matchType} onValueChange={handleMatchTypeChange}>
             <SelectTrigger className="input-gaming">
               <SelectValue />
             </SelectTrigger>
