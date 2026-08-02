@@ -54,6 +54,7 @@ function CreateMatchForm() {
 
   const createMatchMutation = trpc.admin.createMatch.useMutation({
     onSuccess: (data: any) => {
+      console.log("[Admin] Match created successfully:", data);
       toast.success(`Match created successfully! (ID: ${data.matchId})`);
       setMatchTitle("");
       setEntryFee("");
@@ -66,7 +67,8 @@ function CreateMatchForm() {
     },
     onError: (error: any) => {
       console.error("Match creation error:", error);
-      toast.error(error.message || "Failed to create match");
+      const errorMsg = error?.message || error?.data?.code || "Failed to create match";
+      toast.error(errorMsg);
     },
   });
 
@@ -83,7 +85,7 @@ function CreateMatchForm() {
       return;
     }
 
-    createMatchMutation.mutate({
+    const payload = {
       matchType: matchType as any,
       mode: mode as any,
       matchTitle: matchTitle,
@@ -93,7 +95,10 @@ function CreateMatchForm() {
       totalPrizePool: parseFloat(prizePool),
       perKillReward: parseFloat(perKillAmount),
       scheduledStartTime: parsedDate,
-    });
+    };
+
+    console.log("[Admin] Creating match with payload:", payload);
+    createMatchMutation.mutate(payload);
   };
 
   const getModeOptions = () => {
