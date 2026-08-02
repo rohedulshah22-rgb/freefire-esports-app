@@ -215,6 +215,8 @@ export async function initializeMatchModes(): Promise<void> {
     { categoryId: csCat.id, name: "4v4", teamSize: 4, maxPlayers: 8, entryFee: "180" },
     // Lone Wolf modes
     { categoryId: lwCat.id, name: "1v1", teamSize: 1, maxPlayers: 2, entryFee: "50" },
+    { categoryId: lwCat.id, name: "2v2", teamSize: 2, maxPlayers: 4, entryFee: "75" },
+    { categoryId: lwCat.id, name: "4v4", teamSize: 4, maxPlayers: 8, entryFee: "100" },
   ]);
 }
 

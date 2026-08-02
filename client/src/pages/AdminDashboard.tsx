@@ -53,16 +53,19 @@ function CreateMatchForm() {
   const [matchTime, setMatchTime] = useState("");
 
   const createMatchMutation = trpc.admin.createMatch.useMutation({
-    onSuccess: () => {
-      toast.success("Match created successfully!");
+    onSuccess: (data: any) => {
+      toast.success(`Match created successfully! (ID: ${data.matchId})`);
       setMatchTitle("");
       setEntryFee("");
       setPrizePool("");
       setPerKillAmount("2");
       setTotalSlots("");
       setMatchTime("");
+      setMatchType("BR");
+      setMode("Solo");
     },
     onError: (error: any) => {
+      console.error("Match creation error:", error);
       toast.error(error.message || "Failed to create match");
     },
   });
@@ -70,6 +73,13 @@ function CreateMatchForm() {
   const handleCreateMatch = () => {
     if (!matchTitle || !entryFee || !prizePool || !totalSlots || !matchTime) {
       toast.error("Please fill in all fields");
+      return;
+    }
+
+    // Parse datetime-local input to ISO string
+    const parsedDate = new Date(matchTime);
+    if (isNaN(parsedDate.getTime())) {
+      toast.error("Invalid match start time");
       return;
     }
 
@@ -82,7 +92,7 @@ function CreateMatchForm() {
       totalSlots: parseInt(totalSlots),
       totalPrizePool: parseFloat(prizePool),
       perKillReward: parseFloat(perKillAmount),
-      scheduledStartTime: new Date(matchTime),
+      scheduledStartTime: parsedDate,
     });
   };
 

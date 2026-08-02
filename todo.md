@@ -155,3 +155,12 @@
 - [x] Update Mode dropdown to show CS/LW modes (1v1, 2v2, 4v4) for other categories
 - [x] Ensure selected mode value is correctly sent to backend
 - [x] Test admin match creation with different category selections
+
+## Phase 21: Admin Match Creation Fix & Dynamic Mode Filtering
+- [x] Fix backend validation to accept Solo/Duo/Squad modes
+- [x] Fix match start time parsing and ISO formatting
+- [x] Add success notification after match creation
+- [x] Reset form fields after successful creation
+- [x] Update player app to dynamically filter modes by category
+- [x] Verify BR shows only Solo/Duo/Squad
+- [x] Verify CS/LW shows only 1v1/2v2/4v4
