@@ -164,3 +164,14 @@
 - [x] Update player app to dynamically filter modes by category
 - [x] Verify BR shows only Solo/Duo/Squad
 - [x] Verify CS/LW shows only 1v1/2v2/4v4
+
+## Phase 22: Debug Match Creation Submission
+- [x] Verify form submission handler is being called
+- [x] Check backend receives the request with correct payload
+- [x] Ensure mode validation accepts Solo/Duo/Squad
+- [x] Verify date parsing to ISO timestamp
+- [x] Test error handling and toast messages
+- [x] Confirm match is saved to database
+- [x] Changed createMatch to use adminProcedure
+- [x] Added detailed logging throughout createMatch flow
+- [x] Added try-catch for database errors with proper error messages

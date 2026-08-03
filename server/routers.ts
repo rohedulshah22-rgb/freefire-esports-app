@@ -389,7 +389,7 @@ export const appRouter = router({
       return allMatches;
     }),
 
-    createMatch: protectedProcedure
+    createMatch: adminProcedure
       .input(
         z.object({
           matchType: z.enum(["BR", "CS", "LW"]),
@@ -403,7 +403,17 @@ export const appRouter = router({
           scheduledStartTime: z.date(),
         })
       )
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
+        console.log("[Admin] createMatch called with input:", {
+          matchType: input.matchType,
+          mode: input.mode,
+          matchTitle: input.matchTitle,
+          entryFee: input.entryFee,
+          totalSlots: input.totalSlots,
+          scheduledStartTime: input.scheduledStartTime,
+          userId: ctx.user?.id,
+        });
+
         // Map matchType to actual category name
         const categoryNameMap: Record<string, string> = {
           "BR": "BR",
@@ -414,8 +424,10 @@ export const appRouter = router({
         
         // Get category ID
         const categories = await getMatchCategories();
+        console.log("[Admin] Available categories:", categories.map(c => c.name));
         const category = categories.find((c) => c.name === categoryName);
         if (!category) {
+          console.error(`[Admin] Category not found: ${input.matchType} (${categoryName})`);
           throw new TRPCError({
             code: "NOT_FOUND",
             message: `Category ${input.matchType} (${categoryName}) not found`,
@@ -424,13 +436,16 @@ export const appRouter = router({
 
         // Get mode ID - validate mode matches category
         const modes = await getMatchModesByCategory(category.id);
+        console.log("[Admin] Available modes for category", categoryName, ":", modes.map(m => m.name));
         const modeObj = modes.find((m) => m.name === input.mode);
         if (!modeObj) {
+          console.error(`[Admin] Mode not found: ${input.mode} for category ${input.matchType}`);
           throw new TRPCError({
             code: "BAD_REQUEST",
             message: `Mode ${input.mode} not found for category ${input.matchType}`,
           });
         }
+        console.log("[Admin] Mode found:", modeObj.name, "with ID:", modeObj.id);
 
         // Calculate end time (30 mins after start)
         const endTime = new Date(input.scheduledStartTime);
@@ -450,27 +465,36 @@ export const appRouter = router({
         // Use provided matchTitle or generate default
         const finalMatchTitle = input.matchTitle || `${input.matchType} - ${input.mode}`;
 
-        const result = await db.insert(matches).values({
-          categoryId: category.id,
-          modeId: modeObj.id,
-          matchTitle: finalMatchTitle,
-          mapName: input.mapName,
-          scheduledStartTime: input.scheduledStartTime,
-          scheduledEndTime: endTime,
-          status: "scheduled",
-          entryFee: input.entryFee.toString(),
-          totalSlots: input.totalSlots,
-          totalPrizePool: input.totalPrizePool.toString(),
-          perKillReward: input.perKillReward.toString(),
-          adminProfitDeducted: "0",
-          currentPlayers: 0,
-          minPlayersRequired: minPlayers,
-          credentialsVisibleAt,
-          refundProcessed: false,
-        });
+        try {
+          const result = await db.insert(matches).values({
+            categoryId: category.id,
+            modeId: modeObj.id,
+            matchTitle: finalMatchTitle,
+            mapName: input.mapName,
+            scheduledStartTime: input.scheduledStartTime,
+            scheduledEndTime: endTime,
+            status: "scheduled",
+            entryFee: input.entryFee.toString(),
+            totalSlots: input.totalSlots,
+            totalPrizePool: input.totalPrizePool.toString(),
+            perKillReward: input.perKillReward.toString(),
+            adminProfitDeducted: "0",
+            currentPlayers: 0,
+            minPlayersRequired: minPlayers,
+            credentialsVisibleAt,
+            refundProcessed: false,
+          });
 
-        console.log(`[Admin] Match created: ID=${result[0].insertId}, Category=${categoryName}, Mode=${input.mode}, StartTime=${input.scheduledStartTime}`);
-        return { matchId: result[0].insertId, success: true };
+          const matchId = result[0].insertId;
+          console.log(`[Admin] Match created successfully: ID=${matchId}, Category=${categoryName}, Mode=${input.mode}, StartTime=${input.scheduledStartTime}`);
+          return { matchId, success: true };
+        } catch (dbError) {
+          console.error("[Admin] Database error creating match:", dbError);
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: `Failed to create match: ${dbError instanceof Error ? dbError.message : "Unknown error"}`,
+          });
+        }
       }),
   }),
 
