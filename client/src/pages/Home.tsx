@@ -358,13 +358,17 @@ export default function Home() {
               <h2 className="mb-4 text-lg font-bold">Upcoming Matches</h2>
               {upcomingMatches.length > 0 ? (
                 <div className="space-y-3">
-                  {upcomingMatches.map((match) => (
-                    <MatchCard
-                      key={match.match.id}
-                      match={match}
-                      onJoin={() => handleJoinClick(match)}
-                    />
-                  ))}
+                  {upcomingMatches.map((match) => {
+                    const isJoined = match.participants?.some((p: any) => p.userId === user?.id);
+                    return (
+                      <MatchCard
+                        key={match.match.id}
+                        match={match}
+                        onJoin={() => handleJoinClick(match)}
+                        isJoined={isJoined}
+                      />
+                    );
+                  })}
                 </div>
               ) : (
                 <Card className="card-gaming text-center py-8">

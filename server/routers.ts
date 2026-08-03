@@ -145,15 +145,15 @@ export const appRouter = router({
           throw new TRPCError({ code: "BAD_REQUEST", message: "Insufficient balance to join this match" });
         }
 
-        // Deduct entry fee from wallet (prefer bonus balance first, then deposit)
-        let bonusToDeduct = Math.min(entryFee, parseFloat(wallet.bonusBalance));
-        let depositToDeduct = entryFee - bonusToDeduct;
+        // Deduct entry fee from wallet (prefer deposit balance first, then bonus)
+        let depositToDeduct = Math.min(entryFee, parseFloat(wallet.depositBalance));
+        let bonusToDeduct = entryFee - depositToDeduct;
 
-        if (bonusToDeduct > 0) {
-          await updateWalletBalance(userId, "bonusBalance", `-${bonusToDeduct}`);
-        }
         if (depositToDeduct > 0) {
           await updateWalletBalance(userId, "depositBalance", `-${depositToDeduct}`);
+        }
+        if (bonusToDeduct > 0) {
+          await updateWalletBalance(userId, "bonusBalance", `-${bonusToDeduct}`);
         }
 
         // Record player join with Free Fire details

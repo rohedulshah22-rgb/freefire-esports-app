@@ -175,3 +175,13 @@
 - [x] Changed createMatch to use adminProcedure
 - [x] Added detailed logging throughout createMatch flow
 - [x] Added try-catch for database errors with proper error messages
+
+## Phase 23: Fix Match Creation & Player Joining Flow
+- [x] Verify admin match creation saves without errors
+- [x] Test BR category with Solo/Duo/Squad modes
+- [x] Verify player join modal shows rules and input fields
+- [x] Test wallet deduction (Deposit first, then Bonus)
+- [x] Prevent duplicate joins with button state change
+- [x] Verify join confirmation shows success message
+- [x] Add isJoined prop to MatchCard rendering
+- [x] Implement joined status tracking in Home.tsx
