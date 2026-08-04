@@ -8,6 +8,7 @@ import { registerStorageProxy } from "./storageProxy";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
+import { initializeMatchCategories, initializeMatchModes } from "../db";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -29,6 +30,15 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 }
 
 async function startServer() {
+  // Initialize match categories and modes on startup
+  try {
+    await initializeMatchCategories();
+    await initializeMatchModes();
+    console.log("[Server] Match categories and modes initialized");
+  } catch (error) {
+    console.error("[Server] Failed to initialize match data:", error);
+  }
+
   const app = express();
   const server = createServer(app);
   // Configure body parser with larger size limit for file uploads
