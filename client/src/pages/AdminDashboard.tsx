@@ -78,10 +78,21 @@ function CreateMatchForm() {
       return;
     }
 
-    // Parse datetime-local input to ISO string
-    const parsedDate = new Date(matchTime);
+    // Parse datetime-local input to ISO string (handle local timezone)
+    // datetime-local format: "2024-08-03T14:00" - treat as local time, not UTC
+    const [datePart, timePart] = matchTime.split('T');
+    if (!datePart || !timePart) {
+      toast.error("Invalid match start time format");
+      return;
+    }
+    const parsedDate = new Date(`${datePart}T${timePart}:00`);
     if (isNaN(parsedDate.getTime())) {
       toast.error("Invalid match start time");
+      return;
+    }
+    // Ensure the time is in the future
+    if (parsedDate.getTime() <= Date.now()) {
+      toast.error("Match start time must be in the future");
       return;
     }
 
