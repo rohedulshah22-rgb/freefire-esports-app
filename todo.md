@@ -291,3 +291,10 @@
 ## Phase 43: Wallet Submission Router Verification
 - [x] Add rollback-safe router-level coverage for valid deposit request creation
 - [x] Add rollback-safe router-level coverage for valid withdrawal queue creation and winning-balance rules
+
+## Phase 44: Wallet Page Return Navigation
+- [x] Add a dark-theme-consistent return-to-dashboard control to the Deposit page
+- [x] Add a dark-theme-consistent return-to-dashboard control to the Withdrawal page
+- [x] Add regression coverage for both wallet return routes
+- [x] Add page-level regression coverage for the Deposit return control
+- [x] Add page-level regression coverage for the Withdrawal return control

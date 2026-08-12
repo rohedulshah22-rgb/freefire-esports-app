@@ -4,8 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { AlertCircle, ArrowUp, Smartphone, Gift } from "lucide-react";
+import { AlertCircle, ArrowUp, Smartphone, Gift, ArrowLeft } from "lucide-react";
 import { trpc } from "@/lib/trpc";
+import { getPlayerDashboardPath } from "@/lib/walletNavigation";
+import { useLocation } from "wouter";
 
 /**
  * Payout method selection component
@@ -62,6 +64,7 @@ function PayoutMethodSelector({
  */
 export default function WithdrawalPage() {
   const { user } = useAuth();
+  const [, setLocation] = useLocation();
   const [amount, setAmount] = useState("");
   const [payoutMethod, setPayoutMethod] = useState<"upi" | "google_play">("upi");
   const [payoutDetails, setPayoutDetails] = useState("");
@@ -122,9 +125,21 @@ export default function WithdrawalPage() {
       {/* Header */}
       <div className="border-b border-primary/20 bg-gradient-gaming py-6 px-4">
         <div className="mx-auto max-w-4xl">
-          <div className="flex items-center gap-3 mb-2">
-            <ArrowUp className="h-8 w-8 text-accent" />
-            <h1 className="text-3xl font-bold text-accent">Withdraw Funds</h1>
+          <div className="mb-2 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <ArrowUp className="h-8 w-8 text-accent" />
+              <h1 className="text-3xl font-bold text-accent">Withdraw Funds</h1>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="border-primary/50 bg-background/40 text-foreground hover:border-primary hover:bg-primary/10"
+              onClick={() => setLocation(getPlayerDashboardPath())}
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Dashboard
+            </Button>
           </div>
           <p className="text-muted-foreground">Cash out your winning balance</p>
         </div>
