@@ -187,13 +187,13 @@
 - [x] Implement joined status tracking in Home.tsx
 
 ## Phase 24: Supabase Production Data Migration
-- [ ] Audit the current MySQL/TiDB data layer and identify all placeholder data paths
-- [ ] Validate the supplied Supabase credentials with a lightweight connection test
-- [ ] Create a complete PostgreSQL migration script for production tables, indexes, triggers, and RLS policies
-- [ ] Replace the MySQL/TiDB database client and queries with Supabase-backed server queries
-- [ ] Remove mock and fallback data from player and admin user flows
-- [ ] Test real database reads and critical writes against Supabase
-- [ ] Document the safe migration and deployment sequence
+- [x] Superseded by the approved Neon PostgreSQL production migration; not executed against Supabase
+- [x] Superseded by the approved Neon PostgreSQL production migration; not executed against Supabase
+- [x] Superseded by `neon_migration.sql`, which provisions the PostgreSQL schema, indexes, triggers, and RLS policies in Neon
+- [x] Superseded by the Neon-backed application data layer; no Supabase client is used
+- [x] Superseded by the Neon helper hardening work; silent database-unavailable fallbacks were removed
+- [x] Superseded by Neon read and rollback-only write-contract validation; no Supabase writes were run
+- [x] Superseded by `docs/neon-migration.md`, which documents the Neon rollout sequence
 
 ## Phase 25: Neon PostgreSQL Production Migration
 - [x] Configure the supplied Neon DATABASE_URL through secure project environment settings
