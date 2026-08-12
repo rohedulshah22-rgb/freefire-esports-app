@@ -151,8 +151,8 @@ export async function createWallet(userId: number): Promise<void> {
     .onConflictDoNothing({ target: wallets.userId });
 }
 
-export async function getWallet(userId: number) {
-  const db = await requireDb();
+export async function getWallet(userId: number, databaseOverride?: WorkflowDatabase) {
+  const db = databaseOverride ?? await requireDb();
   const result = await db.select().from(wallets).where(eq(wallets.userId, userId)).limit(1);
   return result[0];
 }

@@ -6,6 +6,7 @@ import * as schema from "../drizzle/schema";
 import {
   getPublicMatchById,
   getRoomCredentialsForJoinedPlayer,
+  getWallet,
   getPlayerProfile,
   joinMatch,
   processWithdrawalRequest,
@@ -181,6 +182,8 @@ describe("Neon PostgreSQL write contracts", () => {
 
       const joinResult = await joinMatch(matchId, joinedUserId, "WorkflowIGN", "123456789012", db);
       expect(joinResult).toMatchObject({ deductedFromDeposit: 7, deductedFromBonus: 3, matchId });
+      const walletAfterJoin = await getWallet(joinedUserId, db);
+      expect(walletAfterJoin).toMatchObject({ depositBalance: "0.00", bonusBalance: "0.00", winningBalance: "50.00" });
       const visibleCredentials = await getRoomCredentialsForJoinedPlayer(matchId, joinedUserId, db);
       expect(visibleCredentials).toMatchObject({ available: true, roomId: "secure-room", roomPassword: "secure-password" });
 

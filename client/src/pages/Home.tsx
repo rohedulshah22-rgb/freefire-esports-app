@@ -7,6 +7,7 @@ import { AlertCircle, Zap, Users, Trophy, Wallet, UserRound } from "lucide-react
 import { trpc } from "@/lib/trpc";
 import { useState, useEffect } from "react";
 import { getLoginUrl } from "@/const";
+import { getWelcomeIdentity } from "@/lib/playerPresentation";
 import { PlayerJoinForm } from "@/components/PlayerJoinForm";
 import { toast } from "sonner";
 
@@ -168,6 +169,7 @@ function MatchCard({
  */
 export default function Home() {
   const { user, isAuthenticated, loading } = useAuth();
+  const welcomeIdentity = getWelcomeIdentity(user);
   const [selectedCategory, setSelectedCategory] = useState<number | undefined>(undefined);
   const [selectedMode, setSelectedMode] = useState<number | undefined>(undefined);
 
@@ -270,8 +272,8 @@ export default function Home() {
       <div className="border-b border-primary/20 bg-gradient-gaming py-6 px-4">
         <div className="mx-auto flex max-w-4xl items-center justify-between gap-3">
           <div>
-            <h1 className="mb-2 text-3xl font-bold text-accent">Welcome, {user?.name}</h1>
-            <p className="text-muted-foreground">Ready to compete?</p>
+            <h1 className="mb-1 text-3xl font-bold text-accent">Welcome, {welcomeIdentity}</h1>
+            <p className="text-muted-foreground">{user?.email ? `Signed in as ${user.email}` : "Ready to compete?"}</p>
           </div>
           <Button variant="outline" className="shrink-0 border-accent/40 text-accent hover:bg-accent/10" onClick={() => { window.location.href = "/profile"; }}>
             <UserRound className="mr-2 h-4 w-4" />Profile

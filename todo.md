@@ -252,3 +252,17 @@
 ## Phase 34: Mobile Profile Interaction Verification
 - [x] Add automated coverage for the Home-to-Profile navigation and account-action intent
 - [x] Validate Profile, Logout, and Switch Account behavior through automated contracts; add runtime tests confirming desktop is blocked and Android mobile is allowed
+
+## Phase 35: Home Identity and Wallet Balance Repair
+- [x] Ensure the Home welcome area renders the signed-in player name with an email fallback
+- [x] Set rosidulshah4@gmail.com bonus balance to exactly 100 Coins in Neon and record the adjustment
+- [x] Verify the real Neon wallet query returns current balances to the Home player view
+- [x] Add regression coverage for Home identity fallback and wallet balance data contracts
+
+## Phase 36: Live Wallet Query Verification
+- [x] Invoke the real authenticated wallet.getBalance procedure for the updated Neon account
+- [x] Add regression coverage for the current Neon wallet balance router contract
+- [x] Confirm the Home wallet section consumes the verified balance shape
+
+## Phase 37: Wallet Router Regression Coverage
+- [x] Add rollback-safe automated coverage for the authenticated wallet.getBalance router procedure
