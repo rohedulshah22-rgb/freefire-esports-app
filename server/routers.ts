@@ -93,6 +93,11 @@ export const appRouter = router({
         return await getUpcomingMatches(input.categoryId, input.modeId, input.hoursAhead);
       }),
 
+    getJoinedMatchIds: protectedProcedure.query(async ({ ctx }) => {
+      const participants = await getPlayerMatches(ctx.user.id);
+      return participants.map((participant) => participant.matchId);
+    }),
+
     join: protectedProcedure
       .input(z.object({ 
         matchId: z.number(),
@@ -200,6 +205,67 @@ export const appRouter = router({
       const userId = ctx.user.id;
       return await getUserTransactions(userId);
     }),
+
+    addMoney: protectedProcedure
+      .input(z.object({
+        amount: z.string().regex(/^\d+(?:\.\d{1,2})?$/, "Enter a valid amount"),
+        utrNumber: z.string().regex(/^\d{12}$/, "UTR must contain exactly 12 digits"),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const amount = Number(input.amount);
+        if (amount < 50) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Minimum deposit is 50 Coins" });
+        }
+        const depositId = await createDeposit({
+          userId: ctx.user.id,
+          amount: amount.toFixed(2),
+          utrNumber: input.utrNumber,
+          status: "pending",
+        });
+        return { success: true, depositId };
+      }),
+
+    withdraw: protectedProcedure
+      .input(z.object({
+        amount: z.string().regex(/^\d+(?:\.\d{1,2})?$/, "Enter a valid amount"),
+        payoutMethod: z.enum(["upi", "google_play"]),
+        payoutDetails: z.string().trim().min(3).max(255),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const amount = Number(input.amount);
+        if (amount < 20) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Minimum withdrawal is 20 Coins" });
+        }
+
+        const wallet = await getWallet(ctx.user.id);
+        if (!wallet || Number(wallet.winningBalance) < amount) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Insufficient winning balance" });
+        }
+
+        await updateWalletBalance(ctx.user.id, "winningBalance", (-amount).toFixed(2));
+        try {
+          const withdrawalId = await createWithdrawal({
+            userId: ctx.user.id,
+            amount: amount.toFixed(2),
+            payoutMethod: input.payoutMethod,
+            payoutDetails: input.payoutDetails,
+            status: "pending",
+          });
+          await createTransaction({
+            userId: ctx.user.id,
+            type: "withdrawal",
+            amount: (-amount).toFixed(2),
+            balanceType: "winning",
+            withdrawalId,
+            status: "pending",
+            description: `Withdrawal requested via ${input.payoutMethod}`,
+          });
+          return { success: true, withdrawalId };
+        } catch (error) {
+          await updateWalletBalance(ctx.user.id, "winningBalance", amount.toFixed(2));
+          throw error;
+        }
+      }),
   }),
 
   /**
@@ -483,9 +549,9 @@ export const appRouter = router({
             minPlayersRequired: minPlayers,
             credentialsVisibleAt,
             refundProcessed: false,
-          });
+          }).returning({ id: matches.id });
 
-          const matchId = result[0].insertId;
+          const matchId = result[0]!.id;
           console.log(`[Admin] Match created successfully: ID=${matchId}, Category=${categoryName}, Mode=${input.mode}, StartTime=${input.scheduledStartTime}`);
           return { matchId, success: true };
         } catch (dbError) {

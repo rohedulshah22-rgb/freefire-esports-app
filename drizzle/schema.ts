@@ -1,290 +1,203 @@
 import {
-  int,
-  mysqlEnum,
-  mysqlTable,
+  type AnyPgColumn,
+  bigint,
+  bigserial,
+  boolean,
+  integer,
+  jsonb,
+  numeric,
+  pgEnum,
+  pgTable,
   text,
   timestamp,
   varchar,
-  decimal,
-  boolean,
-  datetime,
-  json,
-} from "drizzle-orm/mysql-core";
+} from "drizzle-orm/pg-core";
 
-/**
- * Core user table backing auth flow.
- * Extended with esports-specific fields.
- */
-export const users = mysqlTable("users", {
-  id: int("id").autoincrement().primaryKey(),
+export const appRoleEnum = pgEnum("app_role", ["user", "admin"]);
+export const transactionKindEnum = pgEnum("transaction_kind", [
+  "deposit",
+  "withdrawal",
+  "match_entry",
+  "kill_reward",
+  "prize_win",
+  "refund",
+  "referral_bonus",
+  "admin_adjustment",
+]);
+export const balanceKindEnum = pgEnum("balance_kind", ["deposit", "winning", "bonus"]);
+export const transactionStatusEnum = pgEnum("transaction_status", ["pending", "completed", "failed", "cancelled"]);
+export const matchStatusEnum = pgEnum("match_status", ["scheduled", "active", "completed", "cancelled", "expired"]);
+export const participantStatusEnum = pgEnum("participant_status", ["joined", "confirmed", "cancelled", "completed"]);
+export const depositStatusEnum = pgEnum("deposit_status", ["pending", "approved", "rejected"]);
+export const withdrawalStatusEnum = pgEnum("withdrawal_status", ["pending", "approved", "rejected", "completed"]);
+export const payoutMethodEnum = pgEnum("payout_method", ["upi", "google_play"]);
+
+export const users = pgTable("users", {
+  id: bigserial("id", { mode: "number" }).primaryKey(),
   openId: varchar("openId", { length: 64 }).notNull().unique(),
   name: text("name"),
   email: varchar("email", { length: 320 }),
   loginMethod: varchar("loginMethod", { length: 64 }),
-  role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
-  
-  // Device & Security
+  role: appRoleEnum("role").default("user").notNull(),
   deviceId: varchar("deviceId", { length: 128 }).unique(),
   isAndroidMobile: boolean("isAndroidMobile").default(true).notNull(),
   isBanned: boolean("isBanned").default(false).notNull(),
   banReason: text("banReason"),
-  
-  // Referral System
   referralCode: varchar("referralCode", { length: 32 }).unique(),
-  referredBy: int("referredBy"),
+  referredBy: bigint("referredBy", { mode: "number" }).references((): AnyPgColumn => users.id, { onDelete: "set null" }),
   referralBonusAwarded: boolean("referralBonusAwarded").default(false).notNull(),
-  
-  // Admin Credentials (for admin users only)
   adminUsername: varchar("adminUsername", { length: 64 }).unique(),
   adminPasswordHash: varchar("adminPasswordHash", { length: 255 }),
-  
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-  lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+  lastSignedIn: timestamp("lastSignedIn", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const wallets = pgTable("wallets", {
+  id: bigserial("id", { mode: "number" }).primaryKey(),
+  userId: bigint("userId", { mode: "number" }).notNull().unique().references(() => users.id, { onDelete: "cascade" }),
+  depositBalance: numeric("depositBalance", { precision: 12, scale: 2 }).default("0").notNull(),
+  winningBalance: numeric("winningBalance", { precision: 12, scale: 2 }).default("0").notNull(),
+  bonusBalance: numeric("bonusBalance", { precision: 12, scale: 2 }).default("0").notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const matchCategories = pgTable("matchCategories", {
+  id: bigserial("id", { mode: "number" }).primaryKey(),
+  name: varchar("name", { length: 64 }).notNull().unique(),
+  description: text("description"),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const matchModes = pgTable("matchModes", {
+  id: bigserial("id", { mode: "number" }).primaryKey(),
+  categoryId: bigint("categoryId", { mode: "number" }).notNull().references(() => matchCategories.id, { onDelete: "cascade" }),
+  name: varchar("name", { length: 64 }).notNull(),
+  teamSize: integer("teamSize").notNull(),
+  maxPlayers: integer("maxPlayers").notNull(),
+  entryFee: numeric("entryFee", { precision: 10, scale: 2 }).notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const matches = pgTable("matches", {
+  id: bigserial("id", { mode: "number" }).primaryKey(),
+  categoryId: bigint("categoryId", { mode: "number" }).notNull().references(() => matchCategories.id, { onDelete: "restrict" }),
+  modeId: bigint("modeId", { mode: "number" }).notNull().references(() => matchModes.id, { onDelete: "restrict" }),
+  matchTitle: varchar("matchTitle", { length: 128 }).notNull(),
+  mapName: varchar("mapName", { length: 128 }).notNull(),
+  scheduledStartTime: timestamp("scheduledStartTime", { withTimezone: true }).notNull(),
+  scheduledEndTime: timestamp("scheduledEndTime", { withTimezone: true }),
+  roomId: varchar("roomId", { length: 64 }),
+  roomPassword: varchar("roomPassword", { length: 64 }),
+  credentialsVisibleAt: timestamp("credentialsVisibleAt", { withTimezone: true }),
+  status: matchStatusEnum("status").default("scheduled").notNull(),
+  entryFee: numeric("entryFee", { precision: 10, scale: 2 }).notNull(),
+  totalSlots: integer("totalSlots").notNull(),
+  totalPrizePool: numeric("totalPrizePool", { precision: 12, scale: 2 }).notNull(),
+  perKillReward: numeric("perKillReward", { precision: 10, scale: 2 }).notNull(),
+  adminProfitDeducted: numeric("adminProfitDeducted", { precision: 12, scale: 2 }).default("0").notNull(),
+  currentPlayers: integer("currentPlayers").default(0).notNull(),
+  minPlayersRequired: integer("minPlayersRequired").notNull(),
+  cancellationReason: text("cancellationReason"),
+  cancelledAt: timestamp("cancelledAt", { withTimezone: true }),
+  refundProcessed: boolean("refundProcessed").default(false).notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const deposits = pgTable("deposits", {
+  id: bigserial("id", { mode: "number" }).primaryKey(),
+  userId: bigint("userId", { mode: "number" }).notNull().references(() => users.id, { onDelete: "cascade" }),
+  amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
+  utrNumber: varchar("utrNumber", { length: 12 }).notNull().unique(),
+  status: depositStatusEnum("status").default("pending").notNull(),
+  rejectionReason: text("rejectionReason"),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const withdrawals = pgTable("withdrawals", {
+  id: bigserial("id", { mode: "number" }).primaryKey(),
+  userId: bigint("userId", { mode: "number" }).notNull().references(() => users.id, { onDelete: "cascade" }),
+  amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
+  payoutMethod: payoutMethodEnum("payoutMethod").notNull(),
+  payoutDetails: varchar("payoutDetails", { length: 255 }).notNull(),
+  status: withdrawalStatusEnum("status").default("pending").notNull(),
+  rejectionReason: text("rejectionReason"),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const referrals = pgTable("referrals", {
+  id: bigserial("id", { mode: "number" }).primaryKey(),
+  referrerId: bigint("referrerId", { mode: "number" }).notNull().references(() => users.id, { onDelete: "cascade" }),
+  referredUserId: bigint("referredUserId", { mode: "number" }).notNull().unique().references(() => users.id, { onDelete: "cascade" }),
+  referralCode: varchar("referralCode", { length: 32 }).notNull(),
+  bonusAwarded: boolean("bonusAwarded").default(false).notNull(),
+  bonusAmount: numeric("bonusAmount", { precision: 10, scale: 2 }).default("5").notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const matchParticipants = pgTable("matchParticipants", {
+  id: bigserial("id", { mode: "number" }).primaryKey(),
+  matchId: bigint("matchId", { mode: "number" }).notNull().references(() => matches.id, { onDelete: "cascade" }),
+  userId: bigint("userId", { mode: "number" }).notNull().references(() => users.id, { onDelete: "cascade" }),
+  freeFireIGN: varchar("freeFireIGN", { length: 32 }),
+  freeFireUID: varchar("freeFireUID", { length: 32 }),
+  status: participantStatusEnum("status").default("joined").notNull(),
+  killCount: integer("killCount"),
+  rank: integer("rank"),
+  prizeAwarded: numeric("prizeAwarded", { precision: 12, scale: 2 }),
+  entryFeeDeducted: numeric("entryFeeDeducted", { precision: 10, scale: 2 }).notNull(),
+  refundAmount: numeric("refundAmount", { precision: 10, scale: 2 }),
+  refundedAt: timestamp("refundedAt", { withTimezone: true }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const transactions = pgTable("transactions", {
+  id: bigserial("id", { mode: "number" }).primaryKey(),
+  userId: bigint("userId", { mode: "number" }).notNull().references(() => users.id, { onDelete: "cascade" }),
+  type: transactionKindEnum("type").notNull(),
+  amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
+  balanceType: balanceKindEnum("balanceType").notNull(),
+  matchId: bigint("matchId", { mode: "number" }).references(() => matches.id, { onDelete: "set null" }),
+  withdrawalId: bigint("withdrawalId", { mode: "number" }).references(() => withdrawals.id, { onDelete: "set null" }),
+  referralId: bigint("referralId", { mode: "number" }).references(() => referrals.id, { onDelete: "set null" }),
+  utrNumber: varchar("utrNumber", { length: 12 }),
+  status: transactionStatusEnum("status").default("pending").notNull(),
+  description: text("description"),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const adminAuditLog = pgTable("adminAuditLog", {
+  id: bigserial("id", { mode: "number" }).primaryKey(),
+  action: varchar("action", { length: 128 }).notNull(),
+  details: jsonb("details"),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
 });
 
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
-
-/**
- * Wallet system with three balance types: Deposit, Winning, Bonus
- */
-export const wallets = mysqlTable("wallets", {
-  id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").notNull().unique(),
-  
-  // Balance in Coins/INR
-  depositBalance: decimal("depositBalance", { precision: 12, scale: 2 }).default("0").notNull(),
-  winningBalance: decimal("winningBalance", { precision: 12, scale: 2 }).default("0").notNull(),
-  bonusBalance: decimal("bonusBalance", { precision: 12, scale: 2 }).default("0").notNull(),
-  
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
 export type Wallet = typeof wallets.$inferSelect;
 export type InsertWallet = typeof wallets.$inferInsert;
-
-/**
- * Transactions tracking all wallet movements
- */
-export const transactions = mysqlTable("transactions", {
-  id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").notNull(),
-  
-  type: mysqlEnum("type", [
-    "deposit",
-    "withdrawal",
-    "match_entry",
-    "kill_reward",
-    "prize_win",
-    "refund",
-    "referral_bonus",
-    "admin_adjustment",
-  ]).notNull(),
-  
-  amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
-  balanceType: mysqlEnum("balanceType", ["deposit", "winning", "bonus"]).notNull(),
-  
-  // Related entities
-  matchId: int("matchId"),
-  withdrawalId: int("withdrawalId"),
-  referralId: int("referralId"),
-  
-  // UTR for deposits
-  utrNumber: varchar("utrNumber", { length: 12 }),
-  
-  status: mysqlEnum("status", ["pending", "completed", "failed", "cancelled"]).default("pending").notNull(),
-  description: text("description"),
-  
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
 export type Transaction = typeof transactions.$inferSelect;
 export type InsertTransaction = typeof transactions.$inferInsert;
-
-/**
- * Match categories: BR, CS, Lone Wolf
- */
-export const matchCategories = mysqlTable("matchCategories", {
-  id: int("id").autoincrement().primaryKey(),
-  name: varchar("name", { length: 64 }).notNull().unique(), // "BR", "CS", "Lone Wolf"
-  description: text("description"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
-
 export type MatchCategory = typeof matchCategories.$inferSelect;
 export type InsertMatchCategory = typeof matchCategories.$inferInsert;
-
-/**
- * Match modes: 1v1, 2v2, 4v4
- */
-export const matchModes = mysqlTable("matchModes", {
-  id: int("id").autoincrement().primaryKey(),
-  categoryId: int("categoryId").notNull(),
-  name: varchar("name", { length: 64 }).notNull(), // "1v1", "2v2", "4v4"
-  teamSize: int("teamSize").notNull(), // 1, 2, 4
-  maxPlayers: int("maxPlayers").notNull(), // 2, 4, 8
-  entryFee: decimal("entryFee", { precision: 10, scale: 2 }).notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
-
 export type MatchMode = typeof matchModes.$inferSelect;
 export type InsertMatchMode = typeof matchModes.$inferInsert;
-
-/**
- * Individual matches - now with admin creation fields
- */
-export const matches = mysqlTable("matches", {
-  id: int("id").autoincrement().primaryKey(),
-  categoryId: int("categoryId").notNull(),
-  modeId: int("modeId").notNull(),
-  
-  // Match details for admin creation
-  matchTitle: varchar("matchTitle", { length: 128 }).notNull(),
-  mapName: varchar("mapName", { length: 128 }).notNull(),
-  
-  // Schedule
-  scheduledStartTime: datetime("scheduledStartTime").notNull(),
-  scheduledEndTime: datetime("scheduledEndTime"),
-  
-  // Room credentials (hidden until 15 mins before start)
-  roomId: varchar("roomId", { length: 64 }),
-  roomPassword: varchar("roomPassword", { length: 64 }),
-  credentialsVisibleAt: datetime("credentialsVisibleAt"),
-  
-  // Match state
-  status: mysqlEnum("status", [
-    "scheduled",
-    "active",
-    "completed",
-    "cancelled",
-    "expired",
-  ]).default("scheduled").notNull(),
-  
-  // Entry fee and prize pool
-  entryFee: decimal("entryFee", { precision: 10, scale: 2 }).notNull(),
-  totalSlots: int("totalSlots").notNull(),
-  totalPrizePool: decimal("totalPrizePool", { precision: 12, scale: 2 }).notNull(),
-  perKillReward: decimal("perKillReward", { precision: 10, scale: 2 }).notNull(),
-  adminProfitDeducted: decimal("adminProfitDeducted", { precision: 12, scale: 2 }).default("0"),
-  
-  // Player count
-  currentPlayers: int("currentPlayers").default(0).notNull(),
-  minPlayersRequired: int("minPlayersRequired").notNull(),
-  
-  // Cancellation tracking
-  cancellationReason: text("cancellationReason"),
-  cancelledAt: datetime("cancelledAt"),
-  refundProcessed: boolean("refundProcessed").default(false).notNull(),
-  
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
 export type Match = typeof matches.$inferSelect;
 export type InsertMatch = typeof matches.$inferInsert;
-
-/**
- * Player participation in matches
- */
-export const matchParticipants = mysqlTable("matchParticipants", {
-  id: int("id").autoincrement().primaryKey(),
-  matchId: int("matchId").notNull(),
-  userId: int("userId").notNull(),
-  
-  // Player Free Fire details
-  freeFireIGN: varchar("freeFireIGN", { length: 32 }),
-  freeFireUID: varchar("freeFireUID", { length: 32 }),
-  
-  // Participation state
-  status: mysqlEnum("status", [
-    "joined",
-    "confirmed",
-    "cancelled",
-    "completed",
-  ]).default("joined").notNull(),
-  
-  // Results (filled by admin)
-  killCount: int("killCount"),
-  rank: int("rank"),
-  prizeAwarded: decimal("prizeAwarded", { precision: 12, scale: 2 }),
-  
-  // Entry fee deducted from wallet
-  entryFeeDeducted: decimal("entryFeeDeducted", { precision: 10, scale: 2 }).notNull(),
-  
-  // Refund tracking
-  refundAmount: decimal("refundAmount", { precision: 10, scale: 2 }),
-  refundedAt: datetime("refundedAt"),
-  
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
 export type MatchParticipant = typeof matchParticipants.$inferSelect;
 export type InsertMatchParticipant = typeof matchParticipants.$inferInsert;
-
-/**
- * Deposits - money added to wallet
- */
-export const deposits = mysqlTable("deposits", {
-  id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").notNull(),
-  amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
-  utrNumber: varchar("utrNumber", { length: 12 }).notNull(),
-  status: mysqlEnum("status", ["pending", "approved", "rejected"]).default("pending").notNull(),
-  rejectionReason: text("rejectionReason"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
 export type Deposit = typeof deposits.$inferSelect;
 export type InsertDeposit = typeof deposits.$inferInsert;
-
-/**
- * Withdrawals - money withdrawn from wallet
- */
-export const withdrawals = mysqlTable("withdrawals", {
-  id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").notNull(),
-  amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
-  payoutMethod: mysqlEnum("payoutMethod", ["upi", "google_play"]).notNull(),
-  payoutDetails: varchar("payoutDetails", { length: 255 }).notNull(),
-  status: mysqlEnum("status", ["pending", "approved", "rejected", "completed"]).default("pending").notNull(),
-  rejectionReason: text("rejectionReason"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
 export type Withdrawal = typeof withdrawals.$inferSelect;
 export type InsertWithdrawal = typeof withdrawals.$inferInsert;
-
-/**
- * Referrals - track referral relationships and bonuses
- */
-export const referrals = mysqlTable("referrals", {
-  id: int("id").autoincrement().primaryKey(),
-  referrerId: int("referrerId").notNull(),
-  referredUserId: int("referredUserId").notNull(),
-  referralCode: varchar("referralCode", { length: 32 }).notNull(),
-  bonusAwarded: boolean("bonusAwarded").default(false).notNull(),
-  bonusAmount: decimal("bonusAmount", { precision: 10, scale: 2 }).default("5").notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
-
 export type Referral = typeof referrals.$inferSelect;
 export type InsertReferral = typeof referrals.$inferInsert;
-
-/**
- * Admin audit log for tracking all admin actions
- */
-export const adminAuditLog = mysqlTable("adminAuditLog", {
-  id: int("id").autoincrement().primaryKey(),
-  action: varchar("action", { length: 128 }).notNull(),
-  details: json("details"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
-
 export type AdminAuditLog = typeof adminAuditLog.$inferSelect;
 export type InsertAdminAuditLog = typeof adminAuditLog.$inferInsert;

@@ -114,9 +114,11 @@ function MatchCategoryCard({
 function MatchCard({
   match,
   onJoin,
+  isJoined = false,
 }: {
   match: any;
   onJoin: (matchId: number) => void;
+  isJoined?: boolean;
 }) {
   const scheduledTime = new Date(match.match.scheduledStartTime);
   const now = new Date();
@@ -151,9 +153,10 @@ function MatchCard({
         <Button
           size="sm"
           className="btn-neon"
+          disabled={isJoined}
           onClick={() => onJoin(match.match.id)}
         >
-          Join
+          {isJoined ? "Joined" : "Join"}
         </Button>
       </div>
     </Card>
@@ -195,6 +198,9 @@ export default function Home() {
 
   // Fetch wallet
   const { data: wallet } = trpc.wallet.getBalance.useQuery(undefined, {
+    enabled: isAuthenticated,
+  });
+  const { data: joinedMatchIds = [] } = trpc.matches.getJoinedMatchIds.useQuery(undefined, {
     enabled: isAuthenticated,
   });
 
@@ -359,7 +365,7 @@ export default function Home() {
               {upcomingMatches.length > 0 ? (
                 <div className="space-y-3">
                   {upcomingMatches.map((match) => {
-                    const isJoined = match.participants?.some((p: any) => p.userId === user?.id);
+                    const isJoined = joinedMatchIds.includes(match.match.id);
                     return (
                       <MatchCard
                         key={match.match.id}

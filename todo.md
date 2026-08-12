@@ -185,3 +185,26 @@
 - [x] Verify join confirmation shows success message
 - [x] Add isJoined prop to MatchCard rendering
 - [x] Implement joined status tracking in Home.tsx
+
+## Phase 24: Supabase Production Data Migration
+- [ ] Audit the current MySQL/TiDB data layer and identify all placeholder data paths
+- [ ] Validate the supplied Supabase credentials with a lightweight connection test
+- [ ] Create a complete PostgreSQL migration script for production tables, indexes, triggers, and RLS policies
+- [ ] Replace the MySQL/TiDB database client and queries with Supabase-backed server queries
+- [ ] Remove mock and fallback data from player and admin user flows
+- [ ] Test real database reads and critical writes against Supabase
+- [ ] Document the safe migration and deployment sequence
+
+## Phase 25: Neon PostgreSQL Production Migration
+- [x] Configure the supplied Neon DATABASE_URL through secure project environment settings
+- [x] Validate Neon connectivity with a read-only Vitest database probe
+- [x] Convert the Drizzle schema and database helpers from MySQL to PostgreSQL
+- [x] Generate and apply a complete Neon PostgreSQL schema migration
+- [x] Replace mock or fallback data paths with real Neon queries
+- [x] Test critical reads and writes against Neon without creating test records
+- [x] Deliver the executable SQL migration and deployment instructions
+
+## Phase 26: Neon Migration Hardening
+- [x] Remove silent database-unavailable fallback returns from the Neon helper layer
+- [x] Add transaction-rollback tests for Neon match, wallet, deposit, and withdrawal write contracts
+- [x] Add committed Neon migration and deployment instructions

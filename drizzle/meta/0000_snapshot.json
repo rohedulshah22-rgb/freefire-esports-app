@@ -1,102 +1,2099 @@
 {
-  "version": "5",
-  "dialect": "mysql",
-  "id": "b3a2e9c2-b43c-4076-9519-8bd906e2c30d",
-  "prevId": "00000000-0000-0000-0000-000000000000",
+  "id": "00000000-0000-0000-0000-000000000000",
+  "prevId": "",
+  "version": "7",
+  "dialect": "postgresql",
   "tables": {
-    "users": {
+    "public.users": {
       "name": "users",
+      "schema": "",
       "columns": {
         "id": {
           "name": "id",
-          "type": "int",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": true
+          "type": "bigserial",
+          "primaryKey": true,
+          "notNull": true
         },
         "openId": {
           "name": "openId",
           "type": "varchar(64)",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "name": {
           "name": "name",
           "type": "text",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "email": {
           "name": "email",
           "type": "varchar(320)",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "loginMethod": {
           "name": "loginMethod",
           "type": "varchar(64)",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "role": {
           "name": "role",
-          "type": "enum('user','admin')",
+          "type": "app_role",
+          "typeSchema": "public",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": "'user'"
+        },
+        "deviceId": {
+          "name": "deviceId",
+          "type": "varchar(128)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "isAndroidMobile": {
+          "name": "isAndroidMobile",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "isBanned": {
+          "name": "isBanned",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "banReason": {
+          "name": "banReason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "referralCode": {
+          "name": "referralCode",
+          "type": "varchar(32)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "referredBy": {
+          "name": "referredBy",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "referralBonusAwarded": {
+          "name": "referralBonusAwarded",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "adminUsername": {
+          "name": "adminUsername",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "adminPasswordHash": {
+          "name": "adminPasswordHash",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
         },
         "createdAt": {
           "name": "createdAt",
-          "type": "timestamp",
+          "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
-          "default": "(now())"
+          "default": "now()"
         },
         "updatedAt": {
           "name": "updatedAt",
-          "type": "timestamp",
+          "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
-          "onUpdate": true,
-          "default": "(now())"
+          "default": "now()"
         },
         "lastSignedIn": {
           "name": "lastSignedIn",
-          "type": "timestamp",
+          "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
-          "default": "(now())"
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "idx_users_email": {
+          "name": "idx_users_email",
+          "columns": [
+            {
+              "expression": "email",
+              "asc": true,
+              "nulls": "last",
+              "opclass": "text_ops",
+              "isExpression": false
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "users_referredBy_fkey": {
+          "name": "users_referredBy_fkey",
+          "tableFrom": "users",
+          "tableTo": "users",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "referredBy"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "users_openId_key": {
+          "columns": [
+            "openId"
+          ],
+          "nullsNotDistinct": false,
+          "name": "users_openId_key"
+        },
+        "users_deviceId_key": {
+          "columns": [
+            "deviceId"
+          ],
+          "nullsNotDistinct": false,
+          "name": "users_deviceId_key"
+        },
+        "users_referralCode_key": {
+          "columns": [
+            "referralCode"
+          ],
+          "nullsNotDistinct": false,
+          "name": "users_referralCode_key"
+        },
+        "users_adminUsername_key": {
+          "columns": [
+            "adminUsername"
+          ],
+          "nullsNotDistinct": false,
+          "name": "users_adminUsername_key"
+        }
+      },
+      "checkConstraints": {
+        "users_id_not_null": {
+          "name": "users_id_not_null",
+          "value": "NOT NULL id"
+        },
+        "users_openId_not_null": {
+          "name": "users_openId_not_null",
+          "value": "NOT NULL \"openId\""
+        },
+        "users_role_not_null": {
+          "name": "users_role_not_null",
+          "value": "NOT NULL role"
+        },
+        "users_isAndroidMobile_not_null": {
+          "name": "users_isAndroidMobile_not_null",
+          "value": "NOT NULL \"isAndroidMobile\""
+        },
+        "users_isBanned_not_null": {
+          "name": "users_isBanned_not_null",
+          "value": "NOT NULL \"isBanned\""
+        },
+        "users_referralBonusAwarded_not_null": {
+          "name": "users_referralBonusAwarded_not_null",
+          "value": "NOT NULL \"referralBonusAwarded\""
+        },
+        "users_createdAt_not_null": {
+          "name": "users_createdAt_not_null",
+          "value": "NOT NULL \"createdAt\""
+        },
+        "users_updatedAt_not_null": {
+          "name": "users_updatedAt_not_null",
+          "value": "NOT NULL \"updatedAt\""
+        },
+        "users_lastSignedIn_not_null": {
+          "name": "users_lastSignedIn_not_null",
+          "value": "NOT NULL \"lastSignedIn\""
+        }
+      },
+      "policies": {
+        "users_update_self_or_admin": {
+          "name": "users_update_self_or_admin",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": [
+            "public"
+          ],
+          "withCheck": "((id = app_current_user_id()) OR app_is_admin())",
+          "using": "((id = app_current_user_id()) OR app_is_admin())"
+        },
+        "users_select_self_or_admin": {
+          "name": "users_select_self_or_admin",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "public"
+          ]
+        }
+      },
+      "isRLSEnabled": true
+    },
+    "public.wallets": {
+      "name": "wallets",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "bigserial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "userId": {
+          "name": "userId",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "depositBalance": {
+          "name": "depositBalance",
+          "type": "numeric(12, 2)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'0'"
+        },
+        "winningBalance": {
+          "name": "winningBalance",
+          "type": "numeric(12, 2)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'0'"
+        },
+        "bonusBalance": {
+          "name": "bonusBalance",
+          "type": "numeric(12, 2)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'0'"
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "idx_wallets_user_id": {
+          "name": "idx_wallets_user_id",
+          "columns": [
+            {
+              "expression": "userId",
+              "asc": true,
+              "nulls": "last",
+              "opclass": "int8_ops",
+              "isExpression": false
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "wallets_userId_fkey": {
+          "name": "wallets_userId_fkey",
+          "tableFrom": "wallets",
+          "tableTo": "users",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "wallets_userId_key": {
+          "columns": [
+            "userId"
+          ],
+          "nullsNotDistinct": false,
+          "name": "wallets_userId_key"
+        }
+      },
+      "checkConstraints": {
+        "wallets_depositBalance_check": {
+          "name": "wallets_depositBalance_check",
+          "value": "\"depositBalance\" >= (0)::numeric"
+        },
+        "wallets_winningBalance_check": {
+          "name": "wallets_winningBalance_check",
+          "value": "\"winningBalance\" >= (0)::numeric"
+        },
+        "wallets_bonusBalance_check": {
+          "name": "wallets_bonusBalance_check",
+          "value": "\"bonusBalance\" >= (0)::numeric"
+        },
+        "wallets_id_not_null": {
+          "name": "wallets_id_not_null",
+          "value": "NOT NULL id"
+        },
+        "wallets_userId_not_null": {
+          "name": "wallets_userId_not_null",
+          "value": "NOT NULL \"userId\""
+        },
+        "wallets_depositBalance_not_null": {
+          "name": "wallets_depositBalance_not_null",
+          "value": "NOT NULL \"depositBalance\""
+        },
+        "wallets_winningBalance_not_null": {
+          "name": "wallets_winningBalance_not_null",
+          "value": "NOT NULL \"winningBalance\""
+        },
+        "wallets_bonusBalance_not_null": {
+          "name": "wallets_bonusBalance_not_null",
+          "value": "NOT NULL \"bonusBalance\""
+        },
+        "wallets_createdAt_not_null": {
+          "name": "wallets_createdAt_not_null",
+          "value": "NOT NULL \"createdAt\""
+        },
+        "wallets_updatedAt_not_null": {
+          "name": "wallets_updatedAt_not_null",
+          "value": "NOT NULL \"updatedAt\""
+        }
+      },
+      "policies": {
+        "wallets_select_self_or_admin": {
+          "name": "wallets_select_self_or_admin",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "public"
+          ],
+          "using": "((\"userId\" = app_current_user_id()) OR app_is_admin())"
+        }
+      },
+      "isRLSEnabled": true
+    },
+    "public.transactions": {
+      "name": "transactions",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "bigserial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "userId": {
+          "name": "userId",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "type": {
+          "name": "type",
+          "type": "transaction_kind",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "amount": {
+          "name": "amount",
+          "type": "numeric(12, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "balanceType": {
+          "name": "balanceType",
+          "type": "balance_kind",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "matchId": {
+          "name": "matchId",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "withdrawalId": {
+          "name": "withdrawalId",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "referralId": {
+          "name": "referralId",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "utrNumber": {
+          "name": "utrNumber",
+          "type": "varchar(12)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "transaction_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'pending'"
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "idx_transactions_match_id": {
+          "name": "idx_transactions_match_id",
+          "columns": [
+            {
+              "expression": "matchId",
+              "asc": true,
+              "nulls": "last",
+              "opclass": "int8_ops",
+              "isExpression": false
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_transactions_user_created": {
+          "name": "idx_transactions_user_created",
+          "columns": [
+            {
+              "expression": "userId",
+              "asc": true,
+              "nulls": "last",
+              "opclass": "int8_ops",
+              "isExpression": false
+            },
+            {
+              "expression": "createdAt",
+              "asc": false,
+              "nulls": "first",
+              "opclass": "int8_ops",
+              "isExpression": false
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "transactions_userId_fkey": {
+          "name": "transactions_userId_fkey",
+          "tableFrom": "transactions",
+          "tableTo": "users",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "transactions_matchId_fkey": {
+          "name": "transactions_matchId_fkey",
+          "tableFrom": "transactions",
+          "tableTo": "matches",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "matchId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "transactions_withdrawalId_fkey": {
+          "name": "transactions_withdrawalId_fkey",
+          "tableFrom": "transactions",
+          "tableTo": "withdrawals",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "withdrawalId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "transactions_referralId_fkey": {
+          "name": "transactions_referralId_fkey",
+          "tableFrom": "transactions",
+          "tableTo": "referrals",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "referralId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "transactions_amount_check": {
+          "name": "transactions_amount_check",
+          "value": "amount <> (0)::numeric"
+        },
+        "transactions_utrNumber_check": {
+          "name": "transactions_utrNumber_check",
+          "value": "(\"utrNumber\" IS NULL) OR ((\"utrNumber\")::text ~ '^[0-9]{12}$'::text)"
+        },
+        "transactions_id_not_null": {
+          "name": "transactions_id_not_null",
+          "value": "NOT NULL id"
+        },
+        "transactions_userId_not_null": {
+          "name": "transactions_userId_not_null",
+          "value": "NOT NULL \"userId\""
+        },
+        "transactions_type_not_null": {
+          "name": "transactions_type_not_null",
+          "value": "NOT NULL type"
+        },
+        "transactions_amount_not_null": {
+          "name": "transactions_amount_not_null",
+          "value": "NOT NULL amount"
+        },
+        "transactions_balanceType_not_null": {
+          "name": "transactions_balanceType_not_null",
+          "value": "NOT NULL \"balanceType\""
+        },
+        "transactions_status_not_null": {
+          "name": "transactions_status_not_null",
+          "value": "NOT NULL status"
+        },
+        "transactions_createdAt_not_null": {
+          "name": "transactions_createdAt_not_null",
+          "value": "NOT NULL \"createdAt\""
+        },
+        "transactions_updatedAt_not_null": {
+          "name": "transactions_updatedAt_not_null",
+          "value": "NOT NULL \"updatedAt\""
+        }
+      },
+      "policies": {
+        "transactions_select_self_or_admin": {
+          "name": "transactions_select_self_or_admin",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "public"
+          ],
+          "using": "((\"userId\" = app_current_user_id()) OR app_is_admin())"
+        }
+      },
+      "isRLSEnabled": true
+    },
+    "public.matchCategories": {
+      "name": "matchCategories",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "bigserial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
         }
       },
       "indexes": {},
       "foreignKeys": {},
-      "compositePrimaryKeys": {
-        "users_id": {
-          "name": "users_id",
-          "columns": [
-            "id"
-          ]
-        }
-      },
+      "compositePrimaryKeys": {},
       "uniqueConstraints": {
-        "users_openId_unique": {
-          "name": "users_openId_unique",
+        "matchCategories_name_key": {
           "columns": [
-            "openId"
+            "name"
+          ],
+          "nullsNotDistinct": false,
+          "name": "matchCategories_name_key"
+        }
+      },
+      "checkConstraints": {
+        "matchCategories_id_not_null": {
+          "name": "matchCategories_id_not_null",
+          "value": "NOT NULL id"
+        },
+        "matchCategories_name_not_null": {
+          "name": "matchCategories_name_not_null",
+          "value": "NOT NULL name"
+        },
+        "matchCategories_createdAt_not_null": {
+          "name": "matchCategories_createdAt_not_null",
+          "value": "NOT NULL \"createdAt\""
+        }
+      },
+      "policies": {
+        "categories_public_read": {
+          "name": "categories_public_read",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "public"
+          ],
+          "using": "true"
+        }
+      },
+      "isRLSEnabled": true
+    },
+    "public.matchModes": {
+      "name": "matchModes",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "bigserial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "categoryId": {
+          "name": "categoryId",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "teamSize": {
+          "name": "teamSize",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "maxPlayers": {
+          "name": "maxPlayers",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "entryFee": {
+          "name": "entryFee",
+          "type": "numeric(10, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "matchModes_categoryId_fkey": {
+          "name": "matchModes_categoryId_fkey",
+          "tableFrom": "matchModes",
+          "tableTo": "matchCategories",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "categoryId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "matchModes_categoryId_name_key": {
+          "columns": [
+            "name",
+            "categoryId"
+          ],
+          "nullsNotDistinct": false,
+          "name": "matchModes_categoryId_name_key"
+        }
+      },
+      "checkConstraints": {
+        "matchModes_teamSize_check": {
+          "name": "matchModes_teamSize_check",
+          "value": "\"teamSize\" > 0"
+        },
+        "matchModes_maxPlayers_check": {
+          "name": "matchModes_maxPlayers_check",
+          "value": "\"maxPlayers\" > 0"
+        },
+        "matchModes_entryFee_check": {
+          "name": "matchModes_entryFee_check",
+          "value": "\"entryFee\" >= (0)::numeric"
+        },
+        "matchModes_id_not_null": {
+          "name": "matchModes_id_not_null",
+          "value": "NOT NULL id"
+        },
+        "matchModes_categoryId_not_null": {
+          "name": "matchModes_categoryId_not_null",
+          "value": "NOT NULL \"categoryId\""
+        },
+        "matchModes_name_not_null": {
+          "name": "matchModes_name_not_null",
+          "value": "NOT NULL name"
+        },
+        "matchModes_teamSize_not_null": {
+          "name": "matchModes_teamSize_not_null",
+          "value": "NOT NULL \"teamSize\""
+        },
+        "matchModes_maxPlayers_not_null": {
+          "name": "matchModes_maxPlayers_not_null",
+          "value": "NOT NULL \"maxPlayers\""
+        },
+        "matchModes_entryFee_not_null": {
+          "name": "matchModes_entryFee_not_null",
+          "value": "NOT NULL \"entryFee\""
+        },
+        "matchModes_createdAt_not_null": {
+          "name": "matchModes_createdAt_not_null",
+          "value": "NOT NULL \"createdAt\""
+        }
+      },
+      "policies": {
+        "modes_public_read": {
+          "name": "modes_public_read",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "public"
+          ],
+          "using": "true"
+        }
+      },
+      "isRLSEnabled": true
+    },
+    "public.matches": {
+      "name": "matches",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "bigserial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "categoryId": {
+          "name": "categoryId",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "modeId": {
+          "name": "modeId",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "matchTitle": {
+          "name": "matchTitle",
+          "type": "varchar(128)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "mapName": {
+          "name": "mapName",
+          "type": "varchar(128)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "scheduledStartTime": {
+          "name": "scheduledStartTime",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "scheduledEndTime": {
+          "name": "scheduledEndTime",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "roomId": {
+          "name": "roomId",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "roomPassword": {
+          "name": "roomPassword",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "credentialsVisibleAt": {
+          "name": "credentialsVisibleAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "match_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'scheduled'"
+        },
+        "entryFee": {
+          "name": "entryFee",
+          "type": "numeric(10, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "totalSlots": {
+          "name": "totalSlots",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "totalPrizePool": {
+          "name": "totalPrizePool",
+          "type": "numeric(12, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "perKillReward": {
+          "name": "perKillReward",
+          "type": "numeric(10, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "adminProfitDeducted": {
+          "name": "adminProfitDeducted",
+          "type": "numeric(12, 2)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'0'"
+        },
+        "currentPlayers": {
+          "name": "currentPlayers",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "minPlayersRequired": {
+          "name": "minPlayersRequired",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "cancellationReason": {
+          "name": "cancellationReason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cancelledAt": {
+          "name": "cancelledAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "refundProcessed": {
+          "name": "refundProcessed",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "idx_matches_category_mode_start": {
+          "name": "idx_matches_category_mode_start",
+          "columns": [
+            {
+              "expression": "categoryId",
+              "asc": true,
+              "nulls": "last",
+              "opclass": "int8_ops",
+              "isExpression": false
+            },
+            {
+              "expression": "modeId",
+              "asc": true,
+              "nulls": "last",
+              "opclass": "timestamptz_ops",
+              "isExpression": false
+            },
+            {
+              "expression": "scheduledStartTime",
+              "asc": true,
+              "nulls": "last",
+              "opclass": "timestamptz_ops",
+              "isExpression": false
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_matches_status_start": {
+          "name": "idx_matches_status_start",
+          "columns": [
+            {
+              "expression": "status",
+              "asc": true,
+              "nulls": "last",
+              "opclass": "enum_ops",
+              "isExpression": false
+            },
+            {
+              "expression": "scheduledStartTime",
+              "asc": true,
+              "nulls": "last",
+              "opclass": "timestamptz_ops",
+              "isExpression": false
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "matches_categoryId_fkey": {
+          "name": "matches_categoryId_fkey",
+          "tableFrom": "matches",
+          "tableTo": "matchCategories",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "categoryId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "matches_modeId_fkey": {
+          "name": "matches_modeId_fkey",
+          "tableFrom": "matches",
+          "tableTo": "matchModes",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "modeId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "matches_entryFee_check": {
+          "name": "matches_entryFee_check",
+          "value": "\"entryFee\" >= (0)::numeric"
+        },
+        "matches_totalSlots_check": {
+          "name": "matches_totalSlots_check",
+          "value": "\"totalSlots\" > 0"
+        },
+        "matches_totalPrizePool_check": {
+          "name": "matches_totalPrizePool_check",
+          "value": "\"totalPrizePool\" >= (0)::numeric"
+        },
+        "matches_createdAt_not_null": {
+          "name": "matches_createdAt_not_null",
+          "value": "NOT NULL \"createdAt\""
+        },
+        "matches_updatedAt_not_null": {
+          "name": "matches_updatedAt_not_null",
+          "value": "NOT NULL \"updatedAt\""
+        },
+        "matches_perKillReward_check": {
+          "name": "matches_perKillReward_check",
+          "value": "\"perKillReward\" >= (0)::numeric"
+        },
+        "matches_adminProfitDeducted_check": {
+          "name": "matches_adminProfitDeducted_check",
+          "value": "\"adminProfitDeducted\" >= (0)::numeric"
+        },
+        "matches_check": {
+          "name": "matches_check",
+          "value": "(\"currentPlayers\" >= 0) AND (\"currentPlayers\" <= \"totalSlots\")"
+        },
+        "matches_check1": {
+          "name": "matches_check1",
+          "value": "(\"minPlayersRequired\" > 0) AND (\"minPlayersRequired\" <= \"totalSlots\")"
+        },
+        "matches_check2": {
+          "name": "matches_check2",
+          "value": "(\"scheduledEndTime\" IS NULL) OR (\"scheduledEndTime\" > \"scheduledStartTime\")"
+        },
+        "matches_check3": {
+          "name": "matches_check3",
+          "value": "(\"credentialsVisibleAt\" IS NULL) OR (\"credentialsVisibleAt\" <= \"scheduledStartTime\")"
+        },
+        "matches_id_not_null": {
+          "name": "matches_id_not_null",
+          "value": "NOT NULL id"
+        },
+        "matches_categoryId_not_null": {
+          "name": "matches_categoryId_not_null",
+          "value": "NOT NULL \"categoryId\""
+        },
+        "matches_modeId_not_null": {
+          "name": "matches_modeId_not_null",
+          "value": "NOT NULL \"modeId\""
+        },
+        "matches_matchTitle_not_null": {
+          "name": "matches_matchTitle_not_null",
+          "value": "NOT NULL \"matchTitle\""
+        },
+        "matches_mapName_not_null": {
+          "name": "matches_mapName_not_null",
+          "value": "NOT NULL \"mapName\""
+        },
+        "matches_scheduledStartTime_not_null": {
+          "name": "matches_scheduledStartTime_not_null",
+          "value": "NOT NULL \"scheduledStartTime\""
+        },
+        "matches_status_not_null": {
+          "name": "matches_status_not_null",
+          "value": "NOT NULL status"
+        },
+        "matches_entryFee_not_null": {
+          "name": "matches_entryFee_not_null",
+          "value": "NOT NULL \"entryFee\""
+        },
+        "matches_totalSlots_not_null": {
+          "name": "matches_totalSlots_not_null",
+          "value": "NOT NULL \"totalSlots\""
+        },
+        "matches_totalPrizePool_not_null": {
+          "name": "matches_totalPrizePool_not_null",
+          "value": "NOT NULL \"totalPrizePool\""
+        },
+        "matches_perKillReward_not_null": {
+          "name": "matches_perKillReward_not_null",
+          "value": "NOT NULL \"perKillReward\""
+        },
+        "matches_adminProfitDeducted_not_null": {
+          "name": "matches_adminProfitDeducted_not_null",
+          "value": "NOT NULL \"adminProfitDeducted\""
+        },
+        "matches_currentPlayers_not_null": {
+          "name": "matches_currentPlayers_not_null",
+          "value": "NOT NULL \"currentPlayers\""
+        },
+        "matches_minPlayersRequired_not_null": {
+          "name": "matches_minPlayersRequired_not_null",
+          "value": "NOT NULL \"minPlayersRequired\""
+        },
+        "matches_refundProcessed_not_null": {
+          "name": "matches_refundProcessed_not_null",
+          "value": "NOT NULL \"refundProcessed\""
+        }
+      },
+      "policies": {
+        "matches_public_read": {
+          "name": "matches_public_read",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "public"
+          ],
+          "using": "true"
+        }
+      },
+      "isRLSEnabled": true
+    },
+    "public.matchParticipants": {
+      "name": "matchParticipants",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "bigserial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "matchId": {
+          "name": "matchId",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "userId": {
+          "name": "userId",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "freeFireIGN": {
+          "name": "freeFireIGN",
+          "type": "varchar(32)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "freeFireUID": {
+          "name": "freeFireUID",
+          "type": "varchar(32)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "participant_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'joined'"
+        },
+        "killCount": {
+          "name": "killCount",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rank": {
+          "name": "rank",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "prizeAwarded": {
+          "name": "prizeAwarded",
+          "type": "numeric(12, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "entryFeeDeducted": {
+          "name": "entryFeeDeducted",
+          "type": "numeric(10, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "refundAmount": {
+          "name": "refundAmount",
+          "type": "numeric(10, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "refundedAt": {
+          "name": "refundedAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "idx_participants_match_id": {
+          "name": "idx_participants_match_id",
+          "columns": [
+            {
+              "expression": "matchId",
+              "asc": true,
+              "nulls": "last",
+              "opclass": "int8_ops",
+              "isExpression": false
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_participants_user_id": {
+          "name": "idx_participants_user_id",
+          "columns": [
+            {
+              "expression": "userId",
+              "asc": true,
+              "nulls": "last",
+              "opclass": "int8_ops",
+              "isExpression": false
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "matchParticipants_matchId_fkey": {
+          "name": "matchParticipants_matchId_fkey",
+          "tableFrom": "matchParticipants",
+          "tableTo": "matches",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "matchId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "matchParticipants_userId_fkey": {
+          "name": "matchParticipants_userId_fkey",
+          "tableFrom": "matchParticipants",
+          "tableTo": "users",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "matchParticipants_matchId_userId_key": {
+          "columns": [
+            "userId",
+            "matchId"
+          ],
+          "nullsNotDistinct": false,
+          "name": "matchParticipants_matchId_userId_key"
+        }
+      },
+      "checkConstraints": {
+        "matchParticipants_killCount_check": {
+          "name": "matchParticipants_killCount_check",
+          "value": "(\"killCount\" IS NULL) OR (\"killCount\" >= 0)"
+        },
+        "matchParticipants_rank_check": {
+          "name": "matchParticipants_rank_check",
+          "value": "(rank IS NULL) OR (rank > 0)"
+        },
+        "matchParticipants_prizeAwarded_check": {
+          "name": "matchParticipants_prizeAwarded_check",
+          "value": "(\"prizeAwarded\" IS NULL) OR (\"prizeAwarded\" >= (0)::numeric)"
+        },
+        "matchParticipants_entryFeeDeducted_check": {
+          "name": "matchParticipants_entryFeeDeducted_check",
+          "value": "\"entryFeeDeducted\" >= (0)::numeric"
+        },
+        "matchParticipants_refundAmount_check": {
+          "name": "matchParticipants_refundAmount_check",
+          "value": "(\"refundAmount\" IS NULL) OR (\"refundAmount\" >= (0)::numeric)"
+        },
+        "matchParticipants_check": {
+          "name": "matchParticipants_check",
+          "value": "(\"refundedAt\" IS NULL) = (\"refundAmount\" IS NULL)"
+        },
+        "matchParticipants_id_not_null": {
+          "name": "matchParticipants_id_not_null",
+          "value": "NOT NULL id"
+        },
+        "matchParticipants_matchId_not_null": {
+          "name": "matchParticipants_matchId_not_null",
+          "value": "NOT NULL \"matchId\""
+        },
+        "matchParticipants_userId_not_null": {
+          "name": "matchParticipants_userId_not_null",
+          "value": "NOT NULL \"userId\""
+        },
+        "matchParticipants_status_not_null": {
+          "name": "matchParticipants_status_not_null",
+          "value": "NOT NULL status"
+        },
+        "matchParticipants_entryFeeDeducted_not_null": {
+          "name": "matchParticipants_entryFeeDeducted_not_null",
+          "value": "NOT NULL \"entryFeeDeducted\""
+        },
+        "matchParticipants_createdAt_not_null": {
+          "name": "matchParticipants_createdAt_not_null",
+          "value": "NOT NULL \"createdAt\""
+        },
+        "matchParticipants_updatedAt_not_null": {
+          "name": "matchParticipants_updatedAt_not_null",
+          "value": "NOT NULL \"updatedAt\""
+        }
+      },
+      "policies": {
+        "participants_insert_self": {
+          "name": "participants_insert_self",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": [
+            "public"
+          ],
+          "withCheck": "(\"userId\" = app_current_user_id())"
+        },
+        "participants_select_self_or_admin": {
+          "name": "participants_select_self_or_admin",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "public"
           ]
         }
       },
-      "checkConstraint": {}
+      "isRLSEnabled": true
+    },
+    "public.deposits": {
+      "name": "deposits",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "bigserial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "userId": {
+          "name": "userId",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "amount": {
+          "name": "amount",
+          "type": "numeric(12, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "utrNumber": {
+          "name": "utrNumber",
+          "type": "varchar(12)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "deposit_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'pending'"
+        },
+        "rejectionReason": {
+          "name": "rejectionReason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "idx_deposits_status_created": {
+          "name": "idx_deposits_status_created",
+          "columns": [
+            {
+              "expression": "status",
+              "asc": true,
+              "nulls": "last",
+              "opclass": "timestamptz_ops",
+              "isExpression": false
+            },
+            {
+              "expression": "createdAt",
+              "asc": true,
+              "nulls": "last",
+              "opclass": "timestamptz_ops",
+              "isExpression": false
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "deposits_userId_fkey": {
+          "name": "deposits_userId_fkey",
+          "tableFrom": "deposits",
+          "tableTo": "users",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "deposits_utrNumber_key": {
+          "columns": [
+            "utrNumber"
+          ],
+          "nullsNotDistinct": false,
+          "name": "deposits_utrNumber_key"
+        }
+      },
+      "checkConstraints": {
+        "deposits_amount_check": {
+          "name": "deposits_amount_check",
+          "value": "amount > (0)::numeric"
+        },
+        "deposits_utrNumber_check": {
+          "name": "deposits_utrNumber_check",
+          "value": "(\"utrNumber\")::text ~ '^[0-9]{12}$'::text"
+        },
+        "deposits_id_not_null": {
+          "name": "deposits_id_not_null",
+          "value": "NOT NULL id"
+        },
+        "deposits_userId_not_null": {
+          "name": "deposits_userId_not_null",
+          "value": "NOT NULL \"userId\""
+        },
+        "deposits_amount_not_null": {
+          "name": "deposits_amount_not_null",
+          "value": "NOT NULL amount"
+        },
+        "deposits_utrNumber_not_null": {
+          "name": "deposits_utrNumber_not_null",
+          "value": "NOT NULL \"utrNumber\""
+        },
+        "deposits_status_not_null": {
+          "name": "deposits_status_not_null",
+          "value": "NOT NULL status"
+        },
+        "deposits_createdAt_not_null": {
+          "name": "deposits_createdAt_not_null",
+          "value": "NOT NULL \"createdAt\""
+        },
+        "deposits_updatedAt_not_null": {
+          "name": "deposits_updatedAt_not_null",
+          "value": "NOT NULL \"updatedAt\""
+        }
+      },
+      "policies": {
+        "deposits_insert_self": {
+          "name": "deposits_insert_self",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": [
+            "public"
+          ],
+          "withCheck": "(\"userId\" = app_current_user_id())"
+        },
+        "deposits_select_self_or_admin": {
+          "name": "deposits_select_self_or_admin",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "public"
+          ]
+        }
+      },
+      "isRLSEnabled": true
+    },
+    "public.withdrawals": {
+      "name": "withdrawals",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "bigserial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "userId": {
+          "name": "userId",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "amount": {
+          "name": "amount",
+          "type": "numeric(12, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "payoutMethod": {
+          "name": "payoutMethod",
+          "type": "payout_method",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "payoutDetails": {
+          "name": "payoutDetails",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "withdrawal_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'pending'"
+        },
+        "rejectionReason": {
+          "name": "rejectionReason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "idx_withdrawals_status_created": {
+          "name": "idx_withdrawals_status_created",
+          "columns": [
+            {
+              "expression": "status",
+              "asc": true,
+              "nulls": "last",
+              "opclass": "timestamptz_ops",
+              "isExpression": false
+            },
+            {
+              "expression": "createdAt",
+              "asc": true,
+              "nulls": "last",
+              "opclass": "timestamptz_ops",
+              "isExpression": false
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "withdrawals_userId_fkey": {
+          "name": "withdrawals_userId_fkey",
+          "tableFrom": "withdrawals",
+          "tableTo": "users",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "withdrawals_amount_check": {
+          "name": "withdrawals_amount_check",
+          "value": "amount >= (20)::numeric"
+        },
+        "withdrawals_id_not_null": {
+          "name": "withdrawals_id_not_null",
+          "value": "NOT NULL id"
+        },
+        "withdrawals_userId_not_null": {
+          "name": "withdrawals_userId_not_null",
+          "value": "NOT NULL \"userId\""
+        },
+        "withdrawals_amount_not_null": {
+          "name": "withdrawals_amount_not_null",
+          "value": "NOT NULL amount"
+        },
+        "withdrawals_payoutMethod_not_null": {
+          "name": "withdrawals_payoutMethod_not_null",
+          "value": "NOT NULL \"payoutMethod\""
+        },
+        "withdrawals_payoutDetails_not_null": {
+          "name": "withdrawals_payoutDetails_not_null",
+          "value": "NOT NULL \"payoutDetails\""
+        },
+        "withdrawals_status_not_null": {
+          "name": "withdrawals_status_not_null",
+          "value": "NOT NULL status"
+        },
+        "withdrawals_createdAt_not_null": {
+          "name": "withdrawals_createdAt_not_null",
+          "value": "NOT NULL \"createdAt\""
+        },
+        "withdrawals_updatedAt_not_null": {
+          "name": "withdrawals_updatedAt_not_null",
+          "value": "NOT NULL \"updatedAt\""
+        }
+      },
+      "policies": {
+        "withdrawals_insert_self": {
+          "name": "withdrawals_insert_self",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": [
+            "public"
+          ],
+          "withCheck": "(\"userId\" = app_current_user_id())"
+        },
+        "withdrawals_select_self_or_admin": {
+          "name": "withdrawals_select_self_or_admin",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "public"
+          ]
+        }
+      },
+      "isRLSEnabled": true
+    },
+    "public.referrals": {
+      "name": "referrals",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "bigserial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "referrerId": {
+          "name": "referrerId",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "referredUserId": {
+          "name": "referredUserId",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "referralCode": {
+          "name": "referralCode",
+          "type": "varchar(32)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "bonusAwarded": {
+          "name": "bonusAwarded",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "bonusAmount": {
+          "name": "bonusAmount",
+          "type": "numeric(10, 2)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'5'"
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "idx_referrals_referrer_id": {
+          "name": "idx_referrals_referrer_id",
+          "columns": [
+            {
+              "expression": "referrerId",
+              "asc": true,
+              "nulls": "last",
+              "opclass": "int8_ops",
+              "isExpression": false
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "referrals_referrerId_fkey": {
+          "name": "referrals_referrerId_fkey",
+          "tableFrom": "referrals",
+          "tableTo": "users",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "referrerId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "referrals_referredUserId_fkey": {
+          "name": "referrals_referredUserId_fkey",
+          "tableFrom": "referrals",
+          "tableTo": "users",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "referredUserId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "referrals_referredUserId_key": {
+          "columns": [
+            "referredUserId"
+          ],
+          "nullsNotDistinct": false,
+          "name": "referrals_referredUserId_key"
+        }
+      },
+      "checkConstraints": {
+        "referrals_bonusAmount_check": {
+          "name": "referrals_bonusAmount_check",
+          "value": "\"bonusAmount\" >= (0)::numeric"
+        },
+        "referrals_check": {
+          "name": "referrals_check",
+          "value": "\"referrerId\" <> \"referredUserId\""
+        },
+        "referrals_id_not_null": {
+          "name": "referrals_id_not_null",
+          "value": "NOT NULL id"
+        },
+        "referrals_referrerId_not_null": {
+          "name": "referrals_referrerId_not_null",
+          "value": "NOT NULL \"referrerId\""
+        },
+        "referrals_referredUserId_not_null": {
+          "name": "referrals_referredUserId_not_null",
+          "value": "NOT NULL \"referredUserId\""
+        },
+        "referrals_referralCode_not_null": {
+          "name": "referrals_referralCode_not_null",
+          "value": "NOT NULL \"referralCode\""
+        },
+        "referrals_bonusAwarded_not_null": {
+          "name": "referrals_bonusAwarded_not_null",
+          "value": "NOT NULL \"bonusAwarded\""
+        },
+        "referrals_bonusAmount_not_null": {
+          "name": "referrals_bonusAmount_not_null",
+          "value": "NOT NULL \"bonusAmount\""
+        },
+        "referrals_createdAt_not_null": {
+          "name": "referrals_createdAt_not_null",
+          "value": "NOT NULL \"createdAt\""
+        }
+      },
+      "policies": {
+        "referrals_select_related_or_admin": {
+          "name": "referrals_select_related_or_admin",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "public"
+          ],
+          "using": "((\"referrerId\" = app_current_user_id()) OR (\"referredUserId\" = app_current_user_id()) OR app_is_admin())"
+        }
+      },
+      "isRLSEnabled": true
+    },
+    "public.adminAuditLog": {
+      "name": "adminAuditLog",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "bigserial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "action": {
+          "name": "action",
+          "type": "varchar(128)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "details": {
+          "name": "details",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "adminAuditLog_id_not_null": {
+          "name": "adminAuditLog_id_not_null",
+          "value": "NOT NULL id"
+        },
+        "adminAuditLog_action_not_null": {
+          "name": "adminAuditLog_action_not_null",
+          "value": "NOT NULL action"
+        },
+        "adminAuditLog_createdAt_not_null": {
+          "name": "adminAuditLog_createdAt_not_null",
+          "value": "NOT NULL \"createdAt\""
+        }
+      },
+      "policies": {
+        "admin_audit_admin_read": {
+          "name": "admin_audit_admin_read",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "public"
+          ],
+          "using": "app_is_admin()"
+        }
+      },
+      "isRLSEnabled": true
     }
   },
+  "enums": {
+    "public.app_role": {
+      "name": "app_role",
+      "values": [
+        "user",
+        "admin"
+      ],
+      "schema": "public"
+    },
+    "public.balance_kind": {
+      "name": "balance_kind",
+      "values": [
+        "deposit",
+        "winning",
+        "bonus"
+      ],
+      "schema": "public"
+    },
+    "public.deposit_status": {
+      "name": "deposit_status",
+      "values": [
+        "pending",
+        "approved",
+        "rejected"
+      ],
+      "schema": "public"
+    },
+    "public.match_status": {
+      "name": "match_status",
+      "values": [
+        "scheduled",
+        "active",
+        "completed",
+        "cancelled",
+        "expired"
+      ],
+      "schema": "public"
+    },
+    "public.participant_status": {
+      "name": "participant_status",
+      "values": [
+        "joined",
+        "confirmed",
+        "cancelled",
+        "completed"
+      ],
+      "schema": "public"
+    },
+    "public.payout_method": {
+      "name": "payout_method",
+      "values": [
+        "upi",
+        "google_play"
+      ],
+      "schema": "public"
+    },
+    "public.transaction_kind": {
+      "name": "transaction_kind",
+      "values": [
+        "deposit",
+        "withdrawal",
+        "match_entry",
+        "kill_reward",
+        "prize_win",
+        "refund",
+        "referral_bonus",
+        "admin_adjustment"
+      ],
+      "schema": "public"
+    },
+    "public.transaction_status": {
+      "name": "transaction_status",
+      "values": [
+        "pending",
+        "completed",
+        "failed",
+        "cancelled"
+      ],
+      "schema": "public"
+    },
+    "public.withdrawal_status": {
+      "name": "withdrawal_status",
+      "values": [
+        "pending",
+        "approved",
+        "rejected",
+        "completed"
+      ],
+      "schema": "public"
+    }
+  },
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
   "views": {},
   "_meta": {
     "schemas": {},
@@ -104,7 +2101,6 @@
     "columns": {}
   },
   "internal": {
-    "tables": {},
-    "indexes": {}
+    "tables": {}
   }
 }

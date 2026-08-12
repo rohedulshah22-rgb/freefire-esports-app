@@ -1,585 +1,339 @@
-import { and, eq, gte, lte, lt, desc } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/mysql2";
+import { and, desc, eq, gte, lt, sql } from "drizzle-orm";
+import { drizzle, type NodePgDatabase } from "drizzle-orm/node-postgres";
+import { Pool } from "pg";
+import * as schema from "../drizzle/schema";
 import {
-  InsertUser,
+  type InsertDeposit,
+  type InsertMatch,
+  type InsertReferral,
+  type InsertTransaction,
+  type InsertUser,
+  type InsertWithdrawal,
+  deposits,
+  matchCategories,
+  matchModes,
+  matchParticipants,
+  matches,
+  referrals,
+  transactions,
   users,
   wallets,
-  InsertWallet,
-  matches,
-  InsertMatch,
-  matchModes,
-  matchCategories,
-  matchParticipants,
-  InsertMatchParticipant,
-  transactions,
-  InsertTransaction,
-  deposits,
-  InsertDeposit,
   withdrawals,
-  InsertWithdrawal,
-  referrals,
-  InsertReferral,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
-let _db: ReturnType<typeof drizzle> | null = null;
+let pool: Pool | null = null;
+let database: NodePgDatabase<typeof schema> | null = null;
 
 export async function getDb() {
-  if (!_db && process.env.DATABASE_URL) {
-    try {
-      _db = drizzle(process.env.DATABASE_URL);
-    } catch (error) {
-      console.warn("[Database] Failed to connect:", error);
-      _db = null;
-    }
-  }
-  return _db;
-}
+  const connectionString = process.env.NEON_DATABASE_URL;
+  if (!connectionString) return null;
 
-/**
- * USER OPERATIONS
- */
-export async function upsertUser(user: InsertUser): Promise<void> {
-  if (!user.openId) {
-    throw new Error("User openId is required for upsert");
-  }
-
-  const db = await getDb();
-  if (!db) {
-    console.warn("[Database] Cannot upsert user: database not available");
-    return;
-  }
-
-  try {
-    const values: InsertUser = {
-      openId: user.openId,
-    };
-    const updateSet: Record<string, unknown> = {};
-
-    const textFields = ["name", "email", "loginMethod"] as const;
-    type TextField = (typeof textFields)[number];
-
-    const assignNullable = (field: TextField) => {
-      const value = user[field];
-      if (value === undefined) return;
-      const normalized = value ?? null;
-      values[field] = normalized;
-      updateSet[field] = normalized;
-    };
-
-    textFields.forEach(assignNullable);
-
-    if (user.lastSignedIn !== undefined) {
-      values.lastSignedIn = user.lastSignedIn;
-      updateSet.lastSignedIn = user.lastSignedIn;
-    }
-    if (user.role !== undefined) {
-      values.role = user.role;
-      updateSet.role = user.role;
-    } else if (user.openId === ENV.ownerOpenId) {
-      values.role = "admin";
-      updateSet.role = "admin";
-    }
-
-    if (!values.lastSignedIn) {
-      values.lastSignedIn = new Date();
-    }
-
-    if (Object.keys(updateSet).length === 0) {
-      updateSet.lastSignedIn = new Date();
-    }
-
-    await db.insert(users).values(values).onDuplicateKeyUpdate({
-      set: updateSet,
+  if (!database) {
+    pool = new Pool({
+      connectionString,
+      ssl: { rejectUnauthorized: true },
+      max: 5,
     });
-  } catch (error) {
-    console.error("[Database] Failed to upsert user:", error);
-    throw error;
+    database = drizzle(pool, { schema });
   }
+  return database;
 }
 
-export async function getUserByOpenId(openId: string) {
+async function requireDb() {
   const db = await getDb();
-  if (!db) return undefined;
-
-  const result = await db
-    .select()
-    .from(users)
-    .where(eq(users.openId, openId))
-    .limit(1);
-
-  return result.length > 0 ? result[0] : undefined;
+  if (!db) throw new Error("Neon database is not configured");
+  return db;
 }
 
-export async function getUserById(userId: number) {
+export async function upsertUser(user: InsertUser): Promise<void> {
+  if (!user.openId) throw new Error("User openId is required for upsert");
   const db = await getDb();
-  if (!db) return undefined;
+  if (!db) throw new Error("Neon database is not configured");
 
-  const result = await db
-    .select()
-    .from(users)
-    .where(eq(users.id, userId))
-    .limit(1);
-
-  return result.length > 0 ? result[0] : undefined;
-}
-
-/**
- * WALLET OPERATIONS
- */
-export async function createWallet(userId: number): Promise<void> {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
-
-  await db.insert(wallets).values({
-    userId,
-    depositBalance: "0",
-    winningBalance: "0",
-    bonusBalance: "0",
+  const role = user.role ?? (user.openId === ENV.ownerOpenId ? "admin" : "user");
+  const lastSignedIn = user.lastSignedIn ?? new Date();
+  await db.insert(users).values({
+    openId: user.openId,
+    name: user.name ?? null,
+    email: user.email ?? null,
+    loginMethod: user.loginMethod ?? null,
+    role,
+    lastSignedIn,
+  }).onConflictDoUpdate({
+    target: users.openId,
+    set: {
+      name: user.name ?? null,
+      email: user.email ?? null,
+      loginMethod: user.loginMethod ?? null,
+      role,
+      lastSignedIn,
+      updatedAt: new Date(),
+    },
   });
 }
 
-export async function getWallet(userId: number) {
+export async function getUserByOpenId(openId: string) {
+  const db = await requireDb();
+  const result = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
+  return result[0];
+}
+
+export async function getUserById(userId: number) {
+  const db = await requireDb();
+  const result = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+  return result[0];
+}
+
+export async function createWallet(userId: number): Promise<void> {
   const db = await getDb();
-  if (!db) return undefined;
+  if (!db) throw new Error("Neon database is not configured");
+  await db.insert(wallets).values({ userId, depositBalance: "0", winningBalance: "0", bonusBalance: "0" })
+    .onConflictDoNothing({ target: wallets.userId });
+}
 
-  const result = await db
-    .select()
-    .from(wallets)
-    .where(eq(wallets.userId, userId))
-    .limit(1);
-
-  return result.length > 0 ? result[0] : undefined;
+export async function getWallet(userId: number) {
+  const db = await requireDb();
+  const result = await db.select().from(wallets).where(eq(wallets.userId, userId)).limit(1);
+  return result[0];
 }
 
 export async function updateWalletBalance(
   userId: number,
   balanceType: "depositBalance" | "winningBalance" | "bonusBalance",
-  amount: string
+  amount: string,
 ): Promise<void> {
   const db = await getDb();
-  if (!db) throw new Error("Database not available");
+  if (!db) throw new Error("Neon database is not configured");
+  const numericAmount = Number(amount);
+  if (!Number.isFinite(numericAmount)) throw new Error("Invalid wallet adjustment amount");
 
-  const wallet = await getWallet(userId);
-  if (!wallet) throw new Error("Wallet not found");
-
-  const currentAmount = parseFloat(wallet[balanceType] as any);
-  const newAmount = (currentAmount + parseFloat(amount)).toFixed(2);
-
-  await db
-    .update(wallets)
-    .set({ [balanceType]: newAmount })
-    .where(eq(wallets.userId, userId));
+  const column = wallets[balanceType];
+  const result = await db.update(wallets)
+    .set({ [balanceType]: sql`${column} + ${numericAmount}` })
+    .where(and(eq(wallets.userId, userId), gte(column, sql`${-numericAmount}`)))
+    .returning({ id: wallets.id });
+  if (result.length === 0) throw new Error("Wallet not found or insufficient balance");
 }
 
-/**
- * MATCH OPERATIONS
- */
 export async function initializeMatchCategories(): Promise<void> {
   const db = await getDb();
-  if (!db) throw new Error("Database not available");
-
-  const existing = await db.select().from(matchCategories);
-  if (existing.length > 0) return; // Already initialized
-
+  if (!db) throw new Error("Neon database is not configured");
   await db.insert(matchCategories).values([
     { name: "BR", description: "Battle Royale" },
     { name: "CS", description: "Clash Squad" },
     { name: "Lone Wolf", description: "Lone Wolf" },
-  ]);
+  ]).onConflictDoUpdate({ target: matchCategories.name, set: { description: sql`excluded."description"` } });
 }
 
 export async function initializeMatchModes(): Promise<void> {
   const db = await getDb();
-  if (!db) throw new Error("Database not available");
-
-  const existing = await db.select().from(matchModes);
-  if (existing.length > 0) return; // Already initialized
-
-  // Get category IDs
+  if (!db) throw new Error("Neon database is not configured");
   const categories = await db.select().from(matchCategories);
-  const brCat = categories.find((c) => c.name === "BR");
-  const csCat = categories.find((c) => c.name === "CS");
-  const lwCat = categories.find((c) => c.name === "Lone Wolf");
+  const categoryId = (name: string) => categories.find((category) => category.name === name)?.id;
+  const br = categoryId("BR");
+  const cs = categoryId("CS");
+  const loneWolf = categoryId("Lone Wolf");
+  if (!br || !cs || !loneWolf) throw new Error("Match categories were not initialized");
 
-  if (!brCat || !csCat || !lwCat) throw new Error("Categories not found");
-
-  await db.insert(matchModes).values([
-    // BR modes: Solo, Duo, Squad
-    { categoryId: brCat.id, name: "Solo", teamSize: 1, maxPlayers: 100, entryFee: "100" },
-    { categoryId: brCat.id, name: "Duo", teamSize: 2, maxPlayers: 100, entryFee: "150" },
-    { categoryId: brCat.id, name: "Squad", teamSize: 4, maxPlayers: 100, entryFee: "200" },
-    // CS modes
-    { categoryId: csCat.id, name: "1v1", teamSize: 1, maxPlayers: 2, entryFee: "80" },
-    { categoryId: csCat.id, name: "2v2", teamSize: 2, maxPlayers: 4, entryFee: "120" },
-    { categoryId: csCat.id, name: "4v4", teamSize: 4, maxPlayers: 8, entryFee: "180" },
-    // Lone Wolf modes
-    { categoryId: lwCat.id, name: "1v1", teamSize: 1, maxPlayers: 2, entryFee: "50" },
-    { categoryId: lwCat.id, name: "2v2", teamSize: 2, maxPlayers: 4, entryFee: "75" },
-    { categoryId: lwCat.id, name: "4v4", teamSize: 4, maxPlayers: 8, entryFee: "100" },
-  ]);
-}
-
-export async function getMatchCategories() {
-  const db = await getDb();
-  if (!db) return [];
-
-  return await db.select().from(matchCategories);
-}
-
-export async function getMatchModesByCategory(categoryId: number) {
-  const db = await getDb();
-  if (!db) return [];
-
-  return await db
-    .select()
-    .from(matchModes)
-    .where(eq(matchModes.categoryId, categoryId));
-}
-
-export async function createMatch(match: InsertMatch): Promise<number> {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
-
-  const result = await db.insert(matches).values(match);
-  return result[0].insertId;
-}
-
-export async function getUpcomingMatches(
-  categoryId: number,
-  modeId?: number,
-  hoursAhead: number = 999999 // Fetch all future matches by default
-) {
-  const db = await getDb();
-  if (!db) return [];
-
-  const now = new Date();
-
-  // Auto-expire past matches: mark any match with start time in the past as expired
-  await db
-    .update(matches)
-    .set({ status: "expired" })
-    .where(
-      and(
-        eq(matches.status, "scheduled"),
-        lt(matches.scheduledStartTime, now)
-      )
-    );
-
-  // Fetch all future matches (no time window restriction)
-  const conditions = [
-    eq(matchCategories.id, categoryId),
-    gte(matches.scheduledStartTime, now),
-    eq(matches.status, "scheduled"),
+  const definitions = [
+    { categoryId: br, name: "Solo", teamSize: 1, maxPlayers: 100, entryFee: "100" },
+    { categoryId: br, name: "Duo", teamSize: 2, maxPlayers: 100, entryFee: "150" },
+    { categoryId: br, name: "Squad", teamSize: 4, maxPlayers: 100, entryFee: "200" },
+    { categoryId: cs, name: "1v1", teamSize: 1, maxPlayers: 2, entryFee: "80" },
+    { categoryId: cs, name: "2v2", teamSize: 2, maxPlayers: 4, entryFee: "120" },
+    { categoryId: cs, name: "4v4", teamSize: 4, maxPlayers: 8, entryFee: "180" },
+    { categoryId: loneWolf, name: "1v1", teamSize: 1, maxPlayers: 2, entryFee: "50" },
+    { categoryId: loneWolf, name: "2v2", teamSize: 2, maxPlayers: 4, entryFee: "75" },
+    { categoryId: loneWolf, name: "4v4", teamSize: 4, maxPlayers: 8, entryFee: "100" },
   ];
 
-  if (modeId) {
-    conditions.push(eq(matchModes.id, modeId));
-  }
-
-  const results = await db
-    .select({
-      match: matches,
-      mode: matchModes,
-      category: matchCategories,
-    })
-    .from(matches)
-    .innerJoin(matchModes, eq(matches.modeId, matchModes.id))
-    .innerJoin(matchCategories, eq(matchModes.categoryId, matchCategories.id))
-    .where(and(...conditions))
-    .orderBy(matches.scheduledStartTime);
-  
-  console.log(`[getUpcomingMatches] CategoryID=${categoryId}, ModeID=${modeId}, FetchedAt=${now.toISOString()}, Found=${results.length} future matches`);
-  return results;
-}
-
-export async function getMatchById(matchId: number) {
-  const db = await getDb();
-  if (!db) return undefined;
-
-  const result = await db
-    .select()
-    .from(matches)
-    .where(eq(matches.id, matchId))
-    .limit(1);
-
-  return result.length > 0 ? result[0] : undefined;
-}
-
-export async function updateMatch(matchId: number, updates: Partial<typeof matches.$inferInsert>) {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
-
-  await db.update(matches).set(updates).where(eq(matches.id, matchId));
-}
-
-/**
- * MATCH PARTICIPANT OPERATIONS
- */
-export async function joinMatch(
-  matchId: number,
-  userId: number,
-  entryFeeDeducted: string,
-  freeFireIGN?: string,
-  freeFireUID?: string
-): Promise<void> {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
-
-  await db.insert(matchParticipants).values({
-    matchId,
-    userId,
-    status: "joined",
-    entryFeeDeducted,
-    freeFireIGN: freeFireIGN || null,
-    freeFireUID: freeFireUID || null,
-  });
-
-  // Increment match player count
-  const match = await getMatchById(matchId);
-  if (match) {
-    await updateMatch(matchId, {
-      currentPlayers: match.currentPlayers + 1,
+  for (const mode of definitions) {
+    await db.insert(matchModes).values(mode).onConflictDoUpdate({
+      target: [matchModes.categoryId, matchModes.name],
+      set: { teamSize: mode.teamSize, maxPlayers: mode.maxPlayers, entryFee: mode.entryFee },
     });
   }
 }
 
-export async function getMatchParticipants(matchId: number) {
-  const db = await getDb();
-  if (!db) return [];
+export async function getMatchCategories() {
+  const db = await requireDb();
+  return db.select().from(matchCategories);
+}
 
-  return await db
-    .select()
-    .from(matchParticipants)
-    .where(eq(matchParticipants.matchId, matchId));
+export async function getMatchModesByCategory(categoryId: number) {
+  const db = await requireDb();
+  return db.select().from(matchModes).where(eq(matchModes.categoryId, categoryId));
+}
+
+export async function createMatch(match: InsertMatch): Promise<number> {
+  const db = await getDb();
+  if (!db) throw new Error("Neon database is not configured");
+  const result = await db.insert(matches).values(match).returning({ id: matches.id });
+  return result[0]!.id;
+}
+
+export async function getUpcomingMatches(categoryId: number, modeId?: number, _hoursAhead?: number) {
+  const db = await requireDb();
+  const now = new Date();
+  await db.update(matches).set({ status: "expired" })
+    .where(and(eq(matches.status, "scheduled"), lt(matches.scheduledStartTime, now)));
+
+  const conditions = [
+    eq(matches.categoryId, categoryId),
+    gte(matches.scheduledStartTime, now),
+    eq(matches.status, "scheduled"),
+  ];
+  if (modeId) conditions.push(eq(matches.modeId, modeId));
+  return db.select({ match: matches, mode: matchModes, category: matchCategories })
+    .from(matches)
+    .innerJoin(matchModes, eq(matches.modeId, matchModes.id))
+    .innerJoin(matchCategories, eq(matches.categoryId, matchCategories.id))
+    .where(and(...conditions))
+    .orderBy(matches.scheduledStartTime);
+}
+
+export async function getMatchById(matchId: number) {
+  const db = await requireDb();
+  const result = await db.select().from(matches).where(eq(matches.id, matchId)).limit(1);
+  return result[0];
+}
+
+export async function updateMatch(matchId: number, updates: Partial<InsertMatch>) {
+  const db = await getDb();
+  if (!db) throw new Error("Neon database is not configured");
+  await db.update(matches).set({ ...updates, updatedAt: new Date() }).where(eq(matches.id, matchId));
+}
+
+export async function joinMatch(matchId: number, userId: number, entryFeeDeducted: string, freeFireIGN?: string, freeFireUID?: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Neon database is not configured");
+  await db.transaction(async (tx) => {
+    await tx.insert(matchParticipants).values({
+      matchId, userId, entryFeeDeducted, freeFireIGN: freeFireIGN ?? null, freeFireUID: freeFireUID ?? null, status: "joined",
+    });
+    const changed = await tx.update(matches).set({ currentPlayers: sql`${matches.currentPlayers} + 1` })
+      .where(and(eq(matches.id, matchId), sql`${matches.currentPlayers} < ${matches.totalSlots}`))
+      .returning({ id: matches.id });
+    if (changed.length === 0) throw new Error("Match is full");
+  });
+}
+
+export async function getMatchParticipants(matchId: number) {
+  const db = await requireDb();
+  return db.select().from(matchParticipants).where(eq(matchParticipants.matchId, matchId));
 }
 
 export async function getPlayerMatches(userId: number) {
-  const db = await getDb();
-  if (!db) return [];
-
-  return await db
-    .select()
-    .from(matchParticipants)
-    .where(eq(matchParticipants.userId, userId));
+  const db = await requireDb();
+  return db.select().from(matchParticipants).where(eq(matchParticipants.userId, userId));
 }
 
-export async function updateParticipantResult(
-  participantId: number,
-  killCount: number,
-  rank: number,
-  prizeAwarded: string
-): Promise<void> {
+export async function updateParticipantResult(participantId: number, killCount: number, rank: number, prizeAwarded: string) {
   const db = await getDb();
-  if (!db) throw new Error("Database not available");
-
-  await db
-    .update(matchParticipants)
-    .set({
-      killCount,
-      rank,
-      prizeAwarded,
-      status: "completed",
-    })
+  if (!db) throw new Error("Neon database is not configured");
+  await db.update(matchParticipants).set({ killCount, rank, prizeAwarded, status: "completed", updatedAt: new Date() })
     .where(eq(matchParticipants.id, participantId));
 }
 
-/**
- * TRANSACTION OPERATIONS
- */
 export async function createTransaction(transaction: InsertTransaction): Promise<number> {
   const db = await getDb();
-  if (!db) throw new Error("Database not available");
-
-  const result = await db.insert(transactions).values(transaction);
-  return result[0].insertId;
+  if (!db) throw new Error("Neon database is not configured");
+  const result = await db.insert(transactions).values(transaction).returning({ id: transactions.id });
+  return result[0]!.id;
 }
 
 export async function getUserTransactions(userId: number) {
-  const db = await getDb();
-  if (!db) return [];
-
-  return await db
-    .select()
-    .from(transactions)
-    .where(eq(transactions.userId, userId))
-    .orderBy(desc(transactions.createdAt));
+  const db = await requireDb();
+  return db.select().from(transactions).where(eq(transactions.userId, userId)).orderBy(desc(transactions.createdAt));
 }
 
-/**
- * DEPOSIT OPERATIONS
- */
 export async function createDeposit(deposit: InsertDeposit): Promise<number> {
   const db = await getDb();
-  if (!db) throw new Error("Database not available");
-
-  const result = await db.insert(deposits).values(deposit);
-  return result[0].insertId;
+  if (!db) throw new Error("Neon database is not configured");
+  const result = await db.insert(deposits).values(deposit).returning({ id: deposits.id });
+  return result[0]!.id;
 }
 
 export async function getPendingDeposits() {
-  const db = await getDb();
-  if (!db) return [];
-
-  return await db
-    .select()
-    .from(deposits)
-    .where(eq(deposits.status, "pending"))
-    .orderBy(deposits.createdAt);
+  const db = await requireDb();
+  return db.select().from(deposits).where(eq(deposits.status, "pending")).orderBy(deposits.createdAt);
 }
 
-export async function updateDepositStatus(
-  depositId: number,
-  status: "pending" | "approved" | "rejected",
-  rejectionReason?: string
-): Promise<void> {
+export async function updateDepositStatus(depositId: number, status: "pending" | "approved" | "rejected", rejectionReason?: string) {
   const db = await getDb();
-  if (!db) throw new Error("Database not available");
-
-  await db
-    .update(deposits)
-    .set({ status, rejectionReason })
-    .where(eq(deposits.id, depositId));
+  if (!db) throw new Error("Neon database is not configured");
+  await db.update(deposits).set({ status, rejectionReason: rejectionReason ?? null, updatedAt: new Date() }).where(eq(deposits.id, depositId));
 }
 
-/**
- * WITHDRAWAL OPERATIONS
- */
 export async function createWithdrawal(withdrawal: InsertWithdrawal): Promise<number> {
   const db = await getDb();
-  if (!db) throw new Error("Database not available");
-
-  const result = await db.insert(withdrawals).values(withdrawal);
-  return result[0].insertId;
+  if (!db) throw new Error("Neon database is not configured");
+  const result = await db.insert(withdrawals).values(withdrawal).returning({ id: withdrawals.id });
+  return result[0]!.id;
 }
 
 export async function getPendingWithdrawals() {
-  const db = await getDb();
-  if (!db) return [];
-
-  return await db
-    .select()
-    .from(withdrawals)
-    .where(eq(withdrawals.status, "pending"))
-    .orderBy(withdrawals.createdAt);
+  const db = await requireDb();
+  return db.select().from(withdrawals).where(eq(withdrawals.status, "pending")).orderBy(withdrawals.createdAt);
 }
 
-export async function updateWithdrawalStatus(
-  withdrawalId: number,
-  status: "pending" | "approved" | "rejected" | "completed",
-  rejectionReason?: string
-): Promise<void> {
+export async function updateWithdrawalStatus(depositId: number, status: "pending" | "approved" | "rejected" | "completed", rejectionReason?: string) {
   const db = await getDb();
-  if (!db) throw new Error("Database not available");
-
-  await db
-    .update(withdrawals)
-    .set({ status, rejectionReason })
-    .where(eq(withdrawals.id, withdrawalId));
+  if (!db) throw new Error("Neon database is not configured");
+  await db.update(withdrawals).set({ status, rejectionReason: rejectionReason ?? null, updatedAt: new Date() }).where(eq(withdrawals.id, depositId));
 }
 
-/**
- * REFERRAL OPERATIONS
- */
 export async function createReferral(referral: InsertReferral): Promise<number> {
   const db = await getDb();
-  if (!db) throw new Error("Database not available");
-
-  const result = await db.insert(referrals).values(referral);
-  return result[0].insertId;
+  if (!db) throw new Error("Neon database is not configured");
+  const result = await db.insert(referrals).values(referral).returning({ id: referrals.id });
+  return result[0]!.id;
 }
 
 export async function getReferralByCode(referralCode: string) {
-  const db = await getDb();
-  if (!db) return undefined;
-
-  const result = await db
-    .select()
-    .from(referrals)
-    .where(eq(referrals.referralCode, referralCode))
-    .limit(1);
-
-  return result.length > 0 ? result[0] : undefined;
+  const db = await requireDb();
+  const result = await db.select().from(referrals).where(eq(referrals.referralCode, referralCode)).limit(1);
+  return result[0];
 }
 
-/**
- * BANNED ACCOUNT OPERATIONS
- */
 export async function isBanned(userId: number): Promise<boolean> {
-  const db = await getDb();
-  if (!db) return false;
-
-  const result = await db
-    .select()
-    .from(users)
-    .where(eq(users.id, userId))
-    .limit(1);
-
-  return result.length > 0 && result[0].isBanned;
+  const user = await getUserById(userId);
+  return Boolean(user?.isBanned);
 }
 
-export async function banUser(
-  userId: number,
-  reason: string
-): Promise<void> {
+export async function banUser(userId: number, reason: string): Promise<void> {
   const db = await getDb();
-  if (!db) throw new Error("Database not available");
-
-  // Mark user as banned
-  await db
-    .update(users)
-    .set({ isBanned: true, banReason: reason })
-    .where(eq(users.id, userId));
+  if (!db) throw new Error("Neon database is not configured");
+  await db.update(users).set({ isBanned: true, banReason: reason, updatedAt: new Date() }).where(eq(users.id, userId));
 }
 
-/**
- * USER MANAGEMENT OPERATIONS (Admin)
- */
 export async function getAllUsersWithWallets() {
-  const db = await getDb();
-  if (!db) return [];
-
-  const result = await db
-    .select({
-      id: users.id,
-      name: users.name,
-      email: users.email,
-      depositBalance: wallets.depositBalance,
-      winningBalance: wallets.winningBalance,
-      bonusBalance: wallets.bonusBalance,
-      createdAt: users.createdAt,
-    })
-    .from(users)
-    .leftJoin(wallets, eq(users.id, wallets.userId))
-    .orderBy(desc(users.createdAt));
-
-  return result;
+  const db = await requireDb();
+  return db.select({
+    id: users.id,
+    name: users.name,
+    email: users.email,
+    depositBalance: wallets.depositBalance,
+    winningBalance: wallets.winningBalance,
+    bonusBalance: wallets.bonusBalance,
+    createdAt: users.createdAt,
+  }).from(users).leftJoin(wallets, eq(users.id, wallets.userId)).orderBy(desc(users.createdAt));
 }
 
 export async function adjustUserBalance(
   userId: number,
   balanceType: "depositBalance" | "winningBalance" | "bonusBalance",
   amount: string,
-  description: string
+  description: string,
 ): Promise<void> {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
-
-  // Update wallet balance
   await updateWalletBalance(userId, balanceType, amount);
-
-  // Create transaction record for audit trail
-  const balanceTypeMap = {
-    depositBalance: "deposit",
-    winningBalance: "winning",
-    bonusBalance: "bonus",
-  };
-
+  const balanceTypeMap = { depositBalance: "deposit", winningBalance: "winning", bonusBalance: "bonus" } as const;
   await createTransaction({
     userId,
     type: "admin_adjustment",
     amount,
-    balanceType: balanceTypeMap[balanceType] as "deposit" | "winning" | "bonus",
+    balanceType: balanceTypeMap[balanceType],
     status: "completed",
     description,
   });

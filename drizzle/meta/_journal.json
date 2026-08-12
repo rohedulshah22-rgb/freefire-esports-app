@@ -1,47 +1,19 @@
 {
   "version": "7",
-  "dialect": "mysql",
+  "dialect": "postgresql",
   "entries": [
     {
       "idx": 0,
-      "version": "5",
-      "when": 1782092327187,
-      "tag": "0000_aromatic_stingray",
+      "version": "7",
+      "when": 1786519405724,
+      "tag": "0000_living_karma",
       "breakpoints": true
     },
     {
       "idx": 1,
-      "version": "5",
-      "when": 1782096091621,
-      "tag": "0001_heavy_spot",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "5",
-      "when": 1784973240867,
-      "tag": "0002_white_nightcrawler",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "5",
-      "when": 1785330768436,
-      "tag": "0003_flippant_harrier",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "5",
-      "when": 1785374962340,
-      "tag": "0004_greedy_tombstone",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "5",
-      "when": 1785377101024,
-      "tag": "0005_conscious_fallen_one",
+      "version": "7",
+      "when": 1786519563052,
+      "tag": "0001_verify_neon_baseline",
       "breakpoints": true
     }
   ]

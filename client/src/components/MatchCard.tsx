@@ -7,7 +7,7 @@ import type { Match } from "@shared/types";
 
 interface MatchCardProps {
   match: Match;
-  onJoin?: () => void;
+  onJoin?: (matchId: number) => void;
   isJoined?: boolean;
 }
 
@@ -142,7 +142,7 @@ export default function MatchCard({ match, onJoin, isJoined }: MatchCardProps) {
                 <Button
                   className="btn-neon"
                   disabled={isJoined}
-                  onClick={() => onJoin?.()}
+                  onClick={() => onJoin?.(match.id)}
                 >
                   {isJoined ? "Joined" : "Join Now"}
                 </Button>
