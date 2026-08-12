@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { AlertCircle, Zap, Users, Trophy, Wallet } from "lucide-react";
+import { AlertCircle, Zap, Users, Trophy, Wallet, UserRound } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useState, useEffect } from "react";
 import { getLoginUrl } from "@/const";
@@ -268,9 +268,14 @@ export default function Home() {
     <div className="min-h-screen bg-background pb-20">
       {/* Header */}
       <div className="border-b border-primary/20 bg-gradient-gaming py-6 px-4">
-        <div className="mx-auto max-w-4xl">
-          <h1 className="mb-2 text-3xl font-bold text-accent">Welcome, {user?.name}</h1>
-          <p className="text-muted-foreground">Ready to compete?</p>
+        <div className="mx-auto flex max-w-4xl items-center justify-between gap-3">
+          <div>
+            <h1 className="mb-2 text-3xl font-bold text-accent">Welcome, {user?.name}</h1>
+            <p className="text-muted-foreground">Ready to compete?</p>
+          </div>
+          <Button variant="outline" className="shrink-0 border-accent/40 text-accent hover:bg-accent/10" onClick={() => { window.location.href = "/profile"; }}>
+            <UserRound className="mr-2 h-4 w-4" />Profile
+          </Button>
         </div>
       </div>
 

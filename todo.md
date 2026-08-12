@@ -235,3 +235,20 @@
 ## Phase 31: Administrator Login Delivery Verification
 - [x] Document the OAuth and Neon credential sequence required to access the Admin Panel
 - [x] Verify the authenticated administrator credential procedure end-to-end without exposing secrets
+
+## Phase 32: Player Profile and Account Controls
+- [x] Add a protected Neon profile summary with match, kill, and earning statistics
+- [x] Add secure editing for the player’s Free Fire display name and UID
+- [x] Build the Player Profile page in the existing dark gaming visual system
+- [x] Add a visible Profile navigation entry from the main player screen
+- [x] Add reliable logout and switch-account actions without clearing browser/app data
+- [x] Add automated tests and validate the mobile profile experience
+
+## Phase 33: Player Profile Flow Completion
+- [x] Force fresh OAuth account selection for the Switch Account action
+- [x] Add profile aggregation and successful update coverage against Neon
+- [x] Verify Profile navigation and account actions on the Android player experience
+
+## Phase 34: Mobile Profile Interaction Verification
+- [x] Add automated coverage for the Home-to-Profile navigation and account-action intent
+- [x] Validate Profile, Logout, and Switch Account behavior through automated contracts; add runtime tests confirming desktop is blocked and Android mobile is allowed

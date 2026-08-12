@@ -101,6 +101,49 @@ export async function getUserById(userId: number) {
   return result[0];
 }
 
+export async function getPlayerProfile(userId: number, databaseOverride?: WorkflowDatabase) {
+  const db = databaseOverride ?? await requireDb();
+  const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+  if (!user) throw new Error("Player account not found");
+
+  const [stats] = await db.select({
+    totalMatches: sql<number>`COUNT(*)::int`,
+    totalKills: sql<number>`COALESCE(SUM(${matchParticipants.killCount}), 0)::int`,
+    totalEarnings: sql<string>`COALESCE(SUM(${matchParticipants.prizeAwarded}), 0)::text`,
+  }).from(matchParticipants).where(eq(matchParticipants.userId, userId));
+
+  const [latestMatchIdentity] = await db.select({
+    ign: matchParticipants.freeFireIGN,
+    uid: matchParticipants.freeFireUID,
+  }).from(matchParticipants)
+    .where(eq(matchParticipants.userId, userId))
+    .orderBy(desc(matchParticipants.createdAt))
+    .limit(1);
+
+  return {
+    user,
+    freeFireName: user.freeFireName ?? latestMatchIdentity?.ign ?? null,
+    freeFireUid: user.freeFireUid ?? latestMatchIdentity?.uid ?? null,
+    totalMatches: stats?.totalMatches ?? 0,
+    totalKills: stats?.totalKills ?? 0,
+    totalEarnings: stats?.totalEarnings ?? "0",
+  };
+}
+
+export async function updatePlayerProfile(
+  userId: number,
+  input: { freeFireName: string; freeFireUid: string },
+  databaseOverride?: WorkflowDatabase,
+) {
+  const db = databaseOverride ?? await requireDb();
+  await db.update(users).set({
+    freeFireName: input.freeFireName,
+    freeFireUid: input.freeFireUid,
+    updatedAt: new Date(),
+  }).where(eq(users.id, userId));
+  return getPlayerProfile(userId, db);
+}
+
 export async function createWallet(userId: number): Promise<void> {
   const db = await getDb();
   if (!db) throw new Error("Neon database is not configured");

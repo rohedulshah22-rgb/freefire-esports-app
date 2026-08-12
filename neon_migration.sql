@@ -296,4 +296,8 @@ CREATE POLICY referrals_select_related_or_admin ON "referrals" FOR SELECT
 USING ("referrerId" = app_current_user_id() OR "referredUserId" = app_current_user_id() OR app_is_admin());
 CREATE POLICY admin_audit_admin_read ON "adminAuditLog" FOR SELECT USING (app_is_admin());
 
+ALTER TABLE "users"
+  ADD COLUMN IF NOT EXISTS "freeFireName" varchar(64),
+  ADD COLUMN IF NOT EXISTS "freeFireUid" varchar(32);
+
 COMMIT;

@@ -39,6 +39,8 @@ import {
   getRoomCredentialsForJoinedPlayer,
   requestWithdrawal,
   processWithdrawalRequest,
+  getPlayerProfile,
+  updatePlayerProfile,
 } from "./db";
 import { COOKIE_NAME } from "@shared/const";
 import { TRPCError } from "@trpc/server";
@@ -65,6 +67,20 @@ export const appRouter = router({
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
       return { success: true } as const;
     }),
+  }),
+
+  profile: router({
+    me: protectedProcedure.query(async ({ ctx }) => {
+      return getPlayerProfile(ctx.user.id);
+    }),
+    update: protectedProcedure
+      .input(z.object({
+        freeFireName: z.string().trim().min(2).max(64),
+        freeFireUid: z.string().trim().regex(/^\d{6,32}$/, "Enter a valid Free Fire UID"),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        return updatePlayerProfile(ctx.user.id, input);
+      }),
   }),
 
   /**

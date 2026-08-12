@@ -15,6 +15,13 @@
       "when": 1786519563052,
       "tag": "0001_verify_neon_baseline",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1786531770447,
+      "tag": "0002_deep_aaron_stack",
+      "breakpoints": true
     }
   ]
 }

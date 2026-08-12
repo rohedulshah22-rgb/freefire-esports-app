@@ -37,6 +37,8 @@ export const users = pgTable("users", {
   openId: varchar("openId", { length: 64 }).notNull().unique(),
   name: text("name"),
   email: varchar("email", { length: 320 }),
+  freeFireName: varchar("freeFireName", { length: 64 }),
+  freeFireUid: varchar("freeFireUid", { length: 32 }),
   loginMethod: varchar("loginMethod", { length: 64 }),
   role: appRoleEnum("role").default("user").notNull(),
   deviceId: varchar("deviceId", { length: 128 }).unique(),

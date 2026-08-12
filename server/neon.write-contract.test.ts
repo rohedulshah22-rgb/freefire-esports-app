@@ -6,9 +6,11 @@ import * as schema from "../drizzle/schema";
 import {
   getPublicMatchById,
   getRoomCredentialsForJoinedPlayer,
+  getPlayerProfile,
   joinMatch,
   processWithdrawalRequest,
   requestWithdrawal,
+  updatePlayerProfile,
 } from "./db";
 
 describe("Neon PostgreSQL write contracts", () => {
@@ -181,6 +183,11 @@ describe("Neon PostgreSQL write contracts", () => {
       expect(joinResult).toMatchObject({ deductedFromDeposit: 7, deductedFromBonus: 3, matchId });
       const visibleCredentials = await getRoomCredentialsForJoinedPlayer(matchId, joinedUserId, db);
       expect(visibleCredentials).toMatchObject({ available: true, roomId: "secure-room", roomPassword: "secure-password" });
+
+      const updatedProfile = await updatePlayerProfile(joinedUserId, { freeFireName: "Updated Workflow IGN", freeFireUid: "987654321012" }, db);
+      expect(updatedProfile).toMatchObject({ freeFireName: "Updated Workflow IGN", freeFireUid: "987654321012", totalMatches: 1, totalKills: 0 });
+      const profileReadback = await getPlayerProfile(joinedUserId, db);
+      expect(profileReadback.freeFireUid).toBe("987654321012");
 
       const withdrawal = await requestWithdrawal(joinedUserId, 20, "upi", "workflow@upi", db);
       await processWithdrawalRequest(withdrawal.withdrawalId, "rejected", "Rollback test", db);
