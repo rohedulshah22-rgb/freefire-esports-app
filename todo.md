@@ -266,3 +266,7 @@
 
 ## Phase 37: Wallet Router Regression Coverage
 - [x] Add rollback-safe automated coverage for the authenticated wallet.getBalance router procedure
+
+## Phase 38: Dynamic Home Welcome Identity
+- [x] Remove the generic Player fallback from the authenticated Home welcome header
+- [x] Display only the current session name or email after Welcome, and cover cross-account identity rendering

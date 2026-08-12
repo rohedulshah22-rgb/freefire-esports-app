@@ -4,5 +4,5 @@ export type PlayerIdentity = {
 };
 
 export function getWelcomeIdentity(user: PlayerIdentity | null | undefined): string {
-  return user?.name?.trim() || user?.email?.trim() || "Player";
+  return user?.name?.trim() || user?.email?.trim() || "";
 }

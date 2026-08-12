@@ -272,7 +272,7 @@ export default function Home() {
       <div className="border-b border-primary/20 bg-gradient-gaming py-6 px-4">
         <div className="mx-auto flex max-w-4xl items-center justify-between gap-3">
           <div>
-            <h1 className="mb-1 text-3xl font-bold text-accent">Welcome, {welcomeIdentity}</h1>
+            <h1 className="mb-1 text-3xl font-bold text-accent">Welcome{welcomeIdentity ? `, ${welcomeIdentity}` : ""}</h1>
             <p className="text-muted-foreground">{user?.email ? `Signed in as ${user.email}` : "Ready to compete?"}</p>
           </div>
           <Button variant="outline" className="shrink-0 border-accent/40 text-accent hover:bg-accent/10" onClick={() => { window.location.href = "/profile"; }}>
