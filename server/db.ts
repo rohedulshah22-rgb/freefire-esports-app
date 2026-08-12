@@ -26,7 +26,7 @@ import { allocateEntryFee } from "./tournamentWalletRules";
 
 let pool: Pool | null = null;
 let database: NodePgDatabase<typeof schema> | null = null;
-type WorkflowDatabase = NodePgDatabase<typeof schema>;
+export type WorkflowDatabase = NodePgDatabase<typeof schema>;
 
 export async function getDb() {
   const connectionString = process.env.NEON_DATABASE_URL;
@@ -510,8 +510,8 @@ export async function getUserTransactions(userId: number) {
   return db.select().from(transactions).where(eq(transactions.userId, userId)).orderBy(desc(transactions.createdAt));
 }
 
-export async function createDeposit(deposit: InsertDeposit): Promise<number> {
-  const db = await getDb();
+export async function createDeposit(deposit: InsertDeposit, databaseOverride?: WorkflowDatabase): Promise<number> {
+  const db = databaseOverride ?? await getDb();
   if (!db) throw new Error("Neon database is not configured");
   const result = await db.insert(deposits).values(deposit).returning({ id: deposits.id });
   return result[0]!.id;

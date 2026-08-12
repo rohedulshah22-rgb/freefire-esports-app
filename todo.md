@@ -278,3 +278,16 @@
 
 ## Phase 40: Session Payload Credential Redaction
 - [x] Ensure auth.me returns a safe public user object without administrator credential hashes
+
+## Phase 41: Home Wallet Actions
+- [x] Connect the Home Add Money button to the existing UPI and 12-digit UTR submission interface
+- [x] Connect the Home Withdraw button to the existing UPI withdrawal request interface
+- [x] Verify both player form submissions create the correct Neon deposit or withdrawal records
+- [x] Add regression coverage for the Home wallet action routes and submission contracts
+
+## Phase 42: Deposit Testing Notice
+- [x] Mark deposit payment details as testing-only until a real receiving UPI ID is configured
+
+## Phase 43: Wallet Submission Router Verification
+- [x] Add rollback-safe router-level coverage for valid deposit request creation
+- [x] Add rollback-safe router-level coverage for valid withdrawal queue creation and winning-balance rules

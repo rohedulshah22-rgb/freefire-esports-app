@@ -214,7 +214,7 @@ export const appRouter = router({
           amount: amount.toFixed(2),
           utrNumber: input.utrNumber,
           status: "pending",
-        });
+        }, ctx.databaseOverride);
         return { success: true, depositId };
       }),
 
@@ -231,7 +231,7 @@ export const appRouter = router({
         }
 
         try {
-          const result = await requestWithdrawal(ctx.user.id, amount, input.payoutMethod, input.payoutDetails);
+          const result = await requestWithdrawal(ctx.user.id, amount, input.payoutMethod, input.payoutDetails, ctx.databaseOverride);
           return { success: true, ...result };
         } catch (error) {
           throw new TRPCError({

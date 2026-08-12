@@ -8,6 +8,7 @@ import { trpc } from "@/lib/trpc";
 import { useState, useEffect } from "react";
 import { getLoginUrl } from "@/const";
 import { getWelcomeIdentity } from "@/lib/playerPresentation";
+import { getWalletActionPath } from "@/lib/walletNavigation";
 import { PlayerJoinForm } from "@/components/PlayerJoinForm";
 import { toast } from "sonner";
 
@@ -308,10 +309,10 @@ export default function Home() {
               </div>
             </div>
             <div className="mt-4 flex gap-2">
-              <Button variant="outline" className="flex-1">
+              <Button variant="outline" className="flex-1" onClick={() => { window.location.href = getWalletActionPath("add-money"); }}>
                 Add Money
               </Button>
-              <Button variant="outline" className="flex-1">
+              <Button variant="outline" className="flex-1" onClick={() => { window.location.href = getWalletActionPath("withdraw"); }}>
                 Withdraw
               </Button>
             </div>

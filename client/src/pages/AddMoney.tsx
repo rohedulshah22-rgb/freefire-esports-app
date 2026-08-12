@@ -159,14 +159,24 @@ export default function AddMoneyPage() {
         {/* UTR Warning */}
         <UTRWarning />
 
-        {/* Deposit Form */}
-        <Card className="card-gaming">
-          <h2 className="mb-6 flex items-center gap-2 text-lg font-bold">
-            <ArrowDown className="h-5 w-5 text-primary" />
-            Deposit Amount
-          </h2>
+          {/* Deposit Form */}
+          <Card className="card-gaming">
+            <h2 className="mb-6 flex items-center gap-2 text-lg font-bold">
+              <ArrowDown className="h-5 w-5 text-primary" />
+              Deposit Amount
+            </h2>
 
-          {/* Preset Amounts */}
+            <div className="mb-6 rounded-lg border border-dashed border-accent/50 bg-accent/10 p-4">
+              <div className="mb-1 flex items-center gap-2">
+                <Badge className="bg-accent/20 text-accent">TESTING MODE</Badge>
+                <p className="font-semibold text-accent">UPI QR and payment details are not configured yet</p>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Do not transfer real money. This page currently lets you test the 12-digit UTR submission workflow, which creates a pending Neon deposit request for admin review.
+              </p>
+            </div>
+
+            {/* Preset Amounts */}
           <PresetAmounts onSelect={setAmount} />
 
           {/* Amount Input */}
