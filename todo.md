@@ -270,3 +270,11 @@
 ## Phase 38: Dynamic Home Welcome Identity
 - [x] Remove the generic Player fallback from the authenticated Home welcome header
 - [x] Display only the current session name or email after Welcome, and cover cross-account identity rendering
+
+## Phase 39: Authenticated Home Session and Wallet Repair
+- [x] Trace and correct current-session user lookup after OAuth sign-in
+- [x] Ensure Home waits for authenticated session identity and requests the matching Neon wallet row
+- [x] Add regression coverage for session-to-Home identity and wallet data propagation
+
+## Phase 40: Session Payload Credential Redaction
+- [x] Ensure auth.me returns a safe public user object without administrator credential hashes

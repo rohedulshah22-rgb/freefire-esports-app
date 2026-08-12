@@ -212,11 +212,7 @@ class SDKServer {
       });
       const { openId, appId, name } = payload as Record<string, unknown>;
 
-      if (
-        !isNonEmptyString(openId) ||
-        !isNonEmptyString(appId) ||
-        !isNonEmptyString(name)
-      ) {
+      if (!isNonEmptyString(openId) || !isNonEmptyString(appId)) {
         console.warn("[Auth] Session payload missing required fields");
         return null;
       }
@@ -224,7 +220,7 @@ class SDKServer {
       return {
         openId,
         appId,
-        name,
+        name: isNonEmptyString(name) ? name : "",
       };
     } catch (error) {
       console.warn("[Auth] Session verification failed", String(error));
@@ -279,10 +275,12 @@ class SDKServer {
     const signedInAt = new Date();
     let user = await db.getUserByOpenId(sessionUserId);
 
-    // If user not in DB, sync from OAuth server automatically
-    if (!user) {
-      try {
-        const userInfo = await this.getUserInfoWithJwt(sessionCookie ?? "");
+    // Refresh the server-side identity from OAuth on authenticated requests. This
+    // reconciles first OAuth sign-in with any pre-provisioned Neon account that
+    // shares the same email, preserving the wallet and existing player data.
+    try {
+      const userInfo = await this.getUserInfoWithJwt(sessionCookie ?? "");
+      if (!userInfo.openId) throw new Error("OAuth identity is missing an openId");
         await db.upsertUser({
           openId: userInfo.openId,
           name: userInfo.name || null,
@@ -291,10 +289,12 @@ class SDKServer {
           lastSignedIn: signedInAt,
         });
         user = await db.getUserByOpenId(userInfo.openId);
-      } catch (error) {
+    } catch (error) {
+      if (!user) {
         console.error("[Auth] Failed to sync user from OAuth:", error);
         throw ForbiddenError("Failed to sync user info");
       }
+      console.warn("[Auth] OAuth identity refresh failed; using the existing Neon session record");
     }
 
     if (!user) {

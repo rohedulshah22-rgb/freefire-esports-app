@@ -69,6 +69,29 @@ export async function upsertUser(user: InsertUser): Promise<void> {
     || user.email?.toLowerCase() === designatedAdminEmail;
   const role = shouldBeAdmin ? "admin" : (user.role ?? "user");
   const lastSignedIn = user.lastSignedIn ?? new Date();
+
+  // A manually provisioned account may have been created before its first OAuth
+  // login. Reuse that account (and its wallet) when OAuth supplies the same email.
+  const normalizedEmail = user.email?.trim().toLowerCase();
+  if (normalizedEmail) {
+    const [existingByEmail] = await db.select().from(users)
+      .where(sql`lower(${users.email}) = ${normalizedEmail}`)
+      .limit(1);
+
+    if (existingByEmail && existingByEmail.openId !== user.openId) {
+      await db.update(users).set({
+        openId: user.openId,
+        name: user.name ?? existingByEmail.name,
+        email: user.email,
+        loginMethod: user.loginMethod ?? existingByEmail.loginMethod,
+        role: shouldBeAdmin ? "admin" : existingByEmail.role,
+        lastSignedIn,
+        updatedAt: new Date(),
+      }).where(eq(users.id, existingByEmail.id));
+      return;
+    }
+  }
+
   await db.insert(users).values({
     openId: user.openId,
     name: user.name ?? null,
