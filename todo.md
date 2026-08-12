@@ -208,3 +208,21 @@
 - [x] Remove silent database-unavailable fallback returns from the Neon helper layer
 - [x] Add transaction-rollback tests for Neon match, wallet, deposit, and withdrawal write contracts
 - [x] Add committed Neon migration and deployment instructions
+
+## Phase 27: Secure Tournament Workflow Integration
+- [x] Make player match joining atomically deduct Deposit balance before Bonus balance and register the participant
+- [x] Automatically calculate and credit eligible kill and rank prizes when an admin submits match results
+- [x] Connect player withdrawal requests to the admin pending-withdrawal queue and secure its processing actions
+- [x] Restrict Room ID and Password retrieval to joined players after the configured credential release time
+- [x] Wire the existing Admin and Player interfaces to the completed tRPC procedures
+- [x] Add rollback-safe automated coverage for the new financial and access-control contracts
+
+## Phase 28: Admin Authorization and Workflow Contract Verification
+- [x] Replace local-only admin access with an authenticated server-side administrator gate for all admin data actions
+- [x] Add rollback-safe Neon integration coverage for atomic match joining and withdrawal queue settlement
+- [x] Add access-control coverage for room credential and public match response boundaries
+
+## Phase 29: Final Workflow Security Hardening
+- [x] Protect every remaining admin-facing query with server-side administrator authorization
+- [x] Add integration-level coverage that invokes the real transactional workflow helpers
+- [x] Add automated positive and negative room-credential access-boundary coverage

@@ -15,7 +15,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
-import { useLocation } from "wouter";
+import { useLocation, useRoute } from "wouter";
 import { PlayerJoinForm } from "@/components/PlayerJoinForm";
 import { toast } from "sonner";
 
@@ -25,26 +25,34 @@ import { toast } from "sonner";
 export default function MatchDetailPage() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
+  const [, params] = useRoute("/match/:id");
   const [isJoining, setIsJoining] = useState(false);
   const [joinFormOpen, setJoinFormOpen] = useState(false);
+  const matchId = Number(params?.id);
+  const utils = trpc.useUtils();
 
-  // Get match ID from URL params (simplified - in real app use proper routing)
-  const matchId = "1"; // Placeholder
-
-  // Fetch match details (placeholder - will use actual router)
-  const [match] = useState({
-    id: 1,
-    category: "BR",
-    mode: "Solo",
-    entryFee: "100",
-    playersJoined: 8,
-    maxPlayers: 100,
-    prizePool: "8000",
-    startTime: new Date(Date.now() + 3600000).toISOString(),
-    roomId: "ROOM123",
-    roomPassword: "PASS456",
-  });
-  const isLoading = false;
+  const { data: matchData, isLoading } = trpc.matches.getById.useQuery(
+    { matchId },
+    { enabled: Number.isSafeInteger(matchId) && matchId > 0 },
+  );
+  const roomCredentialsQuery = trpc.matches.getRoomCredentials.useQuery(
+    { matchId },
+    { enabled: Boolean(user) && Boolean(matchData) },
+  );
+  const match = matchData ? {
+    id: matchData.match.id,
+    category: matchData.category.name,
+    mode: matchData.mode.name,
+    entryFee: matchData.match.entryFee,
+    playersJoined: matchData.match.currentPlayers,
+    maxPlayers: matchData.match.totalSlots,
+    prizePool: matchData.match.totalPrizePool,
+    perKillReward: matchData.match.perKillReward,
+    startTime: matchData.match.scheduledStartTime,
+    status: matchData.match.status,
+    roomId: roomCredentialsQuery.data?.roomId,
+    roomPassword: roomCredentialsQuery.data?.roomPassword,
+  } : null;
 
   // Fetch wallet balance
   const { data: wallet } = trpc.wallet.getBalance.useQuery();
@@ -54,7 +62,11 @@ export default function MatchDetailPage() {
     onSuccess: () => {
       toast.success("Successfully joined the match!");
       setIsJoining(false);
-      setLocation("/");
+      setJoinFormOpen(false);
+      utils.matches.getById.invalidate({ matchId });
+      utils.matches.getJoinedMatchIds.invalidate();
+      utils.matches.getRoomCredentials.invalidate({ matchId });
+      utils.wallet.getBalance.invalidate();
     },
     onError: (error: any) => {
       toast.error(error.message || "Failed to join match");
@@ -108,14 +120,13 @@ export default function MatchDetailPage() {
     );
   }
 
-  // Calculate if match has started
+  // Room credentials are returned only when the server verifies both join status and release time.
   const matchStartTime = new Date(match.startTime);
   const now = new Date();
   const isMatchStarted = now > matchStartTime;
-
-  // Calculate if room credentials should be visible (15 mins before start)
-  const fifteenMinsBeforeStart = new Date(matchStartTime.getTime() - 15 * 60 * 1000);
-  const roomCredentialsVisible = now >= fifteenMinsBeforeStart;
+  const roomCredentialsVisible = roomCredentialsQuery.data?.available === true;
+  const roomAccessMessage = roomCredentialsQuery.error?.message
+    || "Room details unlock 15 minutes before the match and are visible only after you join.";
 
   return (
     <div className="min-h-screen bg-background">

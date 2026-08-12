@@ -27,22 +27,32 @@ import {
   getPendingWithdrawals,
   updateWithdrawalStatus,
   getMatchParticipants,
-  updateParticipantResult,
+  submitParticipantResultAndSettle,
   getPlayerMatches,
   isBanned,
   banUser,
   getAllUsersWithWallets,
   adjustUserBalance,
   getUserTransactions,
+  getPublicMatchById,
+  getRoomCredentialsForJoinedPlayer,
+  requestWithdrawal,
+  processWithdrawalRequest,
 } from "./db";
 import { COOKIE_NAME } from "@shared/const";
 import { TRPCError } from "@trpc/server";
+import { ENV } from "./_core/env";
 
 /**
  * Admin-only procedure - checks if user is authenticated
  * (Role-based checks are done at login level in AdminDashboard)
  */
-const adminProcedure = protectedProcedure;
+const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
+  if (ctx.user.role !== "admin" && ctx.user.openId !== ENV.ownerOpenId) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required" });
+  }
+  return next();
+});
 
 export const appRouter = router({
   system: systemRouter,
@@ -115,73 +125,35 @@ export const appRouter = router({
           });
         }
 
-        // Get match details
-        const match = await getMatchById(input.matchId);
-        if (!match) {
-          throw new TRPCError({ code: "NOT_FOUND", message: "Match not found" });
+        try {
+          const result = await joinMatch(input.matchId, userId, input.freeFireIGN, input.freeFireUID);
+          console.log(`[Matches] Player ${userId} joined match ${input.matchId} with IGN: ${input.freeFireIGN}`);
+          return { success: true, ...result };
+        } catch (error) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: error instanceof Error ? error.message : "Unable to join this match",
+          });
         }
-
-        // Check if match is still accepting players
-        if (match.status !== "scheduled") {
-          throw new TRPCError({ code: "BAD_REQUEST", message: "Match is not accepting players" });
-        }
-
-        // Check if player already joined
-        const participants = await getMatchParticipants(input.matchId);
-        if (participants.some((p) => p.userId === userId)) {
-          throw new TRPCError({ code: "BAD_REQUEST", message: "You have already joined this match" });
-        }
-
-        // Check if match is full
-        if (participants.length >= match.totalSlots) {
-          throw new TRPCError({ code: "BAD_REQUEST", message: "Match is full" });
-        }
-
-        // Get player wallet
-        const wallet = await getWallet(userId);
-        if (!wallet) {
-          throw new TRPCError({ code: "NOT_FOUND", message: "Player wallet not found" });
-        }
-
-        // Check if player has enough balance
-        const entryFee = parseFloat(match.entryFee);
-        const totalBalance = parseFloat(wallet.depositBalance) + parseFloat(wallet.bonusBalance);
-        if (totalBalance < entryFee) {
-          throw new TRPCError({ code: "BAD_REQUEST", message: "Insufficient balance to join this match" });
-        }
-
-        // Deduct entry fee from wallet (prefer deposit balance first, then bonus)
-        let depositToDeduct = Math.min(entryFee, parseFloat(wallet.depositBalance));
-        let bonusToDeduct = entryFee - depositToDeduct;
-
-        if (depositToDeduct > 0) {
-          await updateWalletBalance(userId, "depositBalance", `-${depositToDeduct}`);
-        }
-        if (bonusToDeduct > 0) {
-          await updateWalletBalance(userId, "bonusBalance", `-${bonusToDeduct}`);
-        }
-
-        // Record player join with Free Fire details
-        await joinMatch(input.matchId, userId, match.entryFee, input.freeFireIGN, input.freeFireUID);
-
-        // Create transaction record
-        await createTransaction({
-          userId,
-          type: "match_entry",
-          amount: `-${entryFee}`,
-          balanceType: "deposit",
-          status: "completed",
-          description: `Entry fee for match ${input.matchId} - IGN: ${input.freeFireIGN}`,
-        });
-
-        console.log(`[Matches] Player ${userId} joined match ${input.matchId} with IGN: ${input.freeFireIGN}`);
-        return { success: true, matchId: input.matchId };
       }),
 
     getById: publicProcedure
       .input(z.object({ matchId: z.number() }))
       .query(async ({ input }) => {
-        return await getMatchById(input.matchId);
+        return await getPublicMatchById(input.matchId);
+      }),
+
+    getRoomCredentials: protectedProcedure
+      .input(z.object({ matchId: z.number() }))
+      .query(async ({ ctx, input }) => {
+        try {
+          return await getRoomCredentialsForJoinedPlayer(input.matchId, ctx.user.id);
+        } catch (error) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: error instanceof Error ? error.message : "Room details are unavailable",
+          });
+        }
       }),
   }),
 
@@ -237,33 +209,14 @@ export const appRouter = router({
           throw new TRPCError({ code: "BAD_REQUEST", message: "Minimum withdrawal is 20 Coins" });
         }
 
-        const wallet = await getWallet(ctx.user.id);
-        if (!wallet || Number(wallet.winningBalance) < amount) {
-          throw new TRPCError({ code: "BAD_REQUEST", message: "Insufficient winning balance" });
-        }
-
-        await updateWalletBalance(ctx.user.id, "winningBalance", (-amount).toFixed(2));
         try {
-          const withdrawalId = await createWithdrawal({
-            userId: ctx.user.id,
-            amount: amount.toFixed(2),
-            payoutMethod: input.payoutMethod,
-            payoutDetails: input.payoutDetails,
-            status: "pending",
-          });
-          await createTransaction({
-            userId: ctx.user.id,
-            type: "withdrawal",
-            amount: (-amount).toFixed(2),
-            balanceType: "winning",
-            withdrawalId,
-            status: "pending",
-            description: `Withdrawal requested via ${input.payoutMethod}`,
-          });
-          return { success: true, withdrawalId };
+          const result = await requestWithdrawal(ctx.user.id, amount, input.payoutMethod, input.payoutDetails);
+          return { success: true, ...result };
         } catch (error) {
-          await updateWalletBalance(ctx.user.id, "winningBalance", amount.toFixed(2));
-          throw error;
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: error instanceof Error ? error.message : "Unable to queue withdrawal",
+          });
         }
       }),
   }),
@@ -272,7 +225,7 @@ export const appRouter = router({
    * DEPOSITS (Admin)
    */
   deposits: router({
-    getPending: publicProcedure.query(async () => {
+    getPending: adminProcedure.query(async () => {
       return await getPendingDeposits();
     }),
 
@@ -330,22 +283,28 @@ export const appRouter = router({
    * WITHDRAWALS (Admin)
    */
   withdrawals: router({
-    getPending: publicProcedure.query(async () => {
+    getPending: adminProcedure.query(async () => {
       return await getPendingWithdrawals();
     }),
 
     approve: adminProcedure
       .input(z.object({ withdrawalId: z.number() }))
       .mutation(async ({ input }) => {
-        await updateWithdrawalStatus(input.withdrawalId, "approved");
-        return { success: true };
+        try {
+          return { success: true, ...(await processWithdrawalRequest(input.withdrawalId, "completed")) };
+        } catch (error) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: error instanceof Error ? error.message : "Unable to complete withdrawal" });
+        }
       }),
 
     reject: adminProcedure
-      .input(z.object({ withdrawalId: z.number() }))
+      .input(z.object({ withdrawalId: z.number(), rejectionReason: z.string().trim().min(3).max(500).optional() }))
       .mutation(async ({ input }) => {
-        await updateWithdrawalStatus(input.withdrawalId, "rejected");
-        return { success: true };
+        try {
+          return { success: true, ...(await processWithdrawalRequest(input.withdrawalId, "rejected", input.rejectionReason)) };
+        } catch (error) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: error instanceof Error ? error.message : "Unable to reject withdrawal" });
+        }
       }),
   }),
 
@@ -406,7 +365,9 @@ export const appRouter = router({
    * ADMIN OPERATIONS
    */
   admin: router({
-    getStats: publicProcedure.query(async () => {
+    authorize: adminProcedure.query(() => ({ authorized: true })),
+
+    getStats: adminProcedure.query(async () => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
@@ -442,7 +403,7 @@ export const appRouter = router({
       };
     }),
 
-    getAllMatches: publicProcedure.query(async () => {
+    getAllMatches: adminProcedure.query(async () => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
@@ -574,18 +535,21 @@ export const appRouter = router({
           participantId: z.number(),
           killCount: z.number(),
           rank: z.number(),
-          prizeAwarded: z.string(),
         })
       )
       .mutation(async ({ input }) => {
-        await updateParticipantResult(
-          input.participantId,
-          input.killCount,
-          input.rank,
-          input.prizeAwarded
-        );
-
-        return { success: true };
+        if (input.killCount < 0 || input.rank < 1) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Kill count and rank are invalid" });
+        }
+        try {
+          const result = await submitParticipantResultAndSettle(input.participantId, input.killCount, input.rank);
+          return { success: true, ...result };
+        } catch (error) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: error instanceof Error ? error.message : "Unable to submit match results",
+          });
+        }
       }),
   }),
 });

@@ -21,9 +21,12 @@ import {
   withdrawals,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
+import { calculateTournamentAwards } from "./tournamentPayouts";
+import { allocateEntryFee } from "./tournamentWalletRules";
 
 let pool: Pool | null = null;
 let database: NodePgDatabase<typeof schema> | null = null;
+type WorkflowDatabase = NodePgDatabase<typeof schema>;
 
 export async function getDb() {
   const connectionString = process.env.NEON_DATABASE_URL;
@@ -44,6 +47,15 @@ async function requireDb() {
   const db = await getDb();
   if (!db) throw new Error("Neon database is not configured");
   return db;
+}
+
+async function withinWorkflowTransaction<T>(
+  databaseOverride: WorkflowDatabase | undefined,
+  operation: (tx: WorkflowDatabase) => Promise<T>,
+): Promise<T> {
+  if (databaseOverride) return operation(databaseOverride);
+  const db = await requireDb();
+  return db.transaction((tx) => operation(tx as unknown as WorkflowDatabase));
 }
 
 export async function upsertUser(user: InsertUser): Promise<void> {
@@ -185,7 +197,29 @@ export async function getUpcomingMatches(categoryId: number, modeId?: number, _h
     eq(matches.status, "scheduled"),
   ];
   if (modeId) conditions.push(eq(matches.modeId, modeId));
-  return db.select({ match: matches, mode: matchModes, category: matchCategories })
+  return db.select({
+    match: {
+      id: matches.id,
+      categoryId: matches.categoryId,
+      modeId: matches.modeId,
+      matchTitle: matches.matchTitle,
+      mapName: matches.mapName,
+      scheduledStartTime: matches.scheduledStartTime,
+      scheduledEndTime: matches.scheduledEndTime,
+      status: matches.status,
+      entryFee: matches.entryFee,
+      totalSlots: matches.totalSlots,
+      totalPrizePool: matches.totalPrizePool,
+      perKillReward: matches.perKillReward,
+      adminProfitDeducted: matches.adminProfitDeducted,
+      currentPlayers: matches.currentPlayers,
+      minPlayersRequired: matches.minPlayersRequired,
+      createdAt: matches.createdAt,
+      updatedAt: matches.updatedAt,
+    },
+    mode: matchModes,
+    category: matchCategories,
+  })
     .from(matches)
     .innerJoin(matchModes, eq(matches.modeId, matchModes.id))
     .innerJoin(matchCategories, eq(matches.categoryId, matchCategories.id))
@@ -199,23 +233,121 @@ export async function getMatchById(matchId: number) {
   return result[0];
 }
 
+export async function getPublicMatchById(matchId: number, databaseOverride?: WorkflowDatabase) {
+  const db = databaseOverride ?? await requireDb();
+  const result = await db.select({
+    match: {
+      id: matches.id,
+      matchTitle: matches.matchTitle,
+      mapName: matches.mapName,
+      scheduledStartTime: matches.scheduledStartTime,
+      scheduledEndTime: matches.scheduledEndTime,
+      status: matches.status,
+      entryFee: matches.entryFee,
+      totalSlots: matches.totalSlots,
+      totalPrizePool: matches.totalPrizePool,
+      perKillReward: matches.perKillReward,
+      currentPlayers: matches.currentPlayers,
+      minPlayersRequired: matches.minPlayersRequired,
+    },
+    category: { id: matchCategories.id, name: matchCategories.name, description: matchCategories.description },
+    mode: { id: matchModes.id, name: matchModes.name, teamSize: matchModes.teamSize, maxPlayers: matchModes.maxPlayers },
+  }).from(matches)
+    .innerJoin(matchCategories, eq(matches.categoryId, matchCategories.id))
+    .innerJoin(matchModes, eq(matches.modeId, matchModes.id))
+    .where(eq(matches.id, matchId))
+    .limit(1);
+  return result[0];
+}
+
+export async function getRoomCredentialsForJoinedPlayer(matchId: number, userId: number, databaseOverride?: WorkflowDatabase) {
+  const db = databaseOverride ?? await requireDb();
+  const participant = await db.select({ id: matchParticipants.id })
+    .from(matchParticipants)
+    .where(and(eq(matchParticipants.matchId, matchId), eq(matchParticipants.userId, userId)))
+    .limit(1);
+  if (participant.length === 0) throw new Error("Join this match to access room details");
+
+  const rows = await db.select({
+    roomId: matches.roomId,
+    roomPassword: matches.roomPassword,
+    credentialsVisibleAt: matches.credentialsVisibleAt,
+  }).from(matches).where(eq(matches.id, matchId)).limit(1);
+  const match = rows[0];
+  if (!match) throw new Error("Match not found");
+  if (!match.credentialsVisibleAt || match.credentialsVisibleAt > new Date() || !match.roomId || !match.roomPassword) {
+    return { available: false, visibleAt: match.credentialsVisibleAt };
+  }
+  return { available: true, visibleAt: match.credentialsVisibleAt, roomId: match.roomId, roomPassword: match.roomPassword };
+}
+
 export async function updateMatch(matchId: number, updates: Partial<InsertMatch>) {
   const db = await getDb();
   if (!db) throw new Error("Neon database is not configured");
   await db.update(matches).set({ ...updates, updatedAt: new Date() }).where(eq(matches.id, matchId));
 }
 
-export async function joinMatch(matchId: number, userId: number, entryFeeDeducted: string, freeFireIGN?: string, freeFireUID?: string) {
-  const db = await getDb();
-  if (!db) throw new Error("Neon database is not configured");
-  await db.transaction(async (tx) => {
-    await tx.insert(matchParticipants).values({
-      matchId, userId, entryFeeDeducted, freeFireIGN: freeFireIGN ?? null, freeFireUID: freeFireUID ?? null, status: "joined",
+export async function joinMatch(
+  matchId: number,
+  userId: number,
+  freeFireIGN: string,
+  freeFireUID: string,
+  databaseOverride?: WorkflowDatabase,
+) {
+  return withinWorkflowTransaction(databaseOverride, async (tx) => {
+    const matchRows = await tx.select().from(matches).where(eq(matches.id, matchId)).limit(1).for("update");
+    const match = matchRows[0];
+    if (!match) throw new Error("Match not found");
+    if (match.status !== "scheduled" || match.scheduledStartTime <= new Date()) {
+      throw new Error("Match is not accepting players");
+    }
+    if (match.currentPlayers >= match.totalSlots) throw new Error("Match is full");
+
+    const duplicate = await tx.select({ id: matchParticipants.id }).from(matchParticipants)
+      .where(and(eq(matchParticipants.matchId, matchId), eq(matchParticipants.userId, userId))).limit(1);
+    if (duplicate.length > 0) throw new Error("You have already joined this match");
+
+    await tx.insert(wallets).values({ userId, depositBalance: "0", winningBalance: "0", bonusBalance: "0" })
+      .onConflictDoNothing({ target: wallets.userId });
+    const walletRows = await tx.select().from(wallets).where(eq(wallets.userId, userId)).limit(1).for("update");
+    const wallet = walletRows[0];
+    if (!wallet) throw new Error("Player wallet not found");
+
+    const entryFee = Number(match.entryFee);
+    const { deductedFromDeposit, deductedFromBonus } = allocateEntryFee(
+      entryFee,
+      Number(wallet.depositBalance),
+      Number(wallet.bonusBalance),
+    );
+    if (deductedFromDeposit > 0) {
+      await tx.update(wallets).set({ depositBalance: sql`${wallets.depositBalance} - ${deductedFromDeposit}` })
+        .where(eq(wallets.userId, userId));
+    }
+    if (deductedFromBonus > 0) {
+      await tx.update(wallets).set({ bonusBalance: sql`${wallets.bonusBalance} - ${deductedFromBonus}` })
+        .where(eq(wallets.userId, userId));
+    }
+
+    const participantRows = await tx.insert(matchParticipants).values({
+      matchId, userId, entryFeeDeducted: entryFee.toFixed(2), freeFireIGN, freeFireUID, status: "joined",
+    }).returning({ id: matchParticipants.id });
+    const participantId = participantRows[0]!.id;
+
+    await tx.update(matches).set({ currentPlayers: sql`${matches.currentPlayers} + 1`, updatedAt: new Date() })
+      .where(eq(matches.id, matchId));
+
+    const transactionsToCreate = [];
+    if (deductedFromDeposit > 0) transactionsToCreate.push({
+      userId, type: "match_entry" as const, amount: (-deductedFromDeposit).toFixed(2), balanceType: "deposit" as const,
+      matchId, status: "completed" as const, description: `Match entry fee deducted from Deposit balance for match ${matchId}`,
     });
-    const changed = await tx.update(matches).set({ currentPlayers: sql`${matches.currentPlayers} + 1` })
-      .where(and(eq(matches.id, matchId), sql`${matches.currentPlayers} < ${matches.totalSlots}`))
-      .returning({ id: matches.id });
-    if (changed.length === 0) throw new Error("Match is full");
+    if (deductedFromBonus > 0) transactionsToCreate.push({
+      userId, type: "match_entry" as const, amount: (-deductedFromBonus).toFixed(2), balanceType: "bonus" as const,
+      matchId, status: "completed" as const, description: `Match entry fee deducted from Bonus balance for match ${matchId}`,
+    });
+    if (transactionsToCreate.length > 0) await tx.insert(transactions).values(transactionsToCreate);
+
+    return { participantId, matchId, deductedFromDeposit, deductedFromBonus };
   });
 }
 
@@ -234,6 +366,66 @@ export async function updateParticipantResult(participantId: number, killCount: 
   if (!db) throw new Error("Neon database is not configured");
   await db.update(matchParticipants).set({ killCount, rank, prizeAwarded, status: "completed", updatedAt: new Date() })
     .where(eq(matchParticipants.id, participantId));
+}
+
+export async function submitParticipantResultAndSettle(participantId: number, killCount: number, rank: number) {
+  const db = await requireDb();
+  return db.transaction(async (tx) => {
+    const participantRows = await tx.select().from(matchParticipants)
+      .where(eq(matchParticipants.id, participantId)).limit(1).for("update");
+    const participant = participantRows[0];
+    if (!participant) throw new Error("Participant not found");
+    if (participant.status === "completed") throw new Error("This participant's result has already been settled");
+
+    const matchRows = await tx.select({ match: matches, category: matchCategories })
+      .from(matches).innerJoin(matchCategories, eq(matches.categoryId, matchCategories.id))
+      .where(eq(matches.id, participant.matchId)).limit(1).for("update");
+    const matchData = matchRows[0];
+    if (!matchData) throw new Error("Match not found");
+    if (["cancelled", "expired"].includes(matchData.match.status)) throw new Error("This match cannot be settled");
+
+    await tx.update(matchParticipants).set({ killCount, rank, status: "confirmed", updatedAt: new Date() })
+      .where(eq(matchParticipants.id, participantId));
+
+    const participants = await tx.select().from(matchParticipants)
+      .where(eq(matchParticipants.matchId, matchData.match.id)).for("update");
+    const pendingResults = participants.filter((entry) => entry.id !== participantId && (entry.killCount === null || entry.rank === null));
+    if (pendingResults.length > 0) return { settled: false, pendingResults: pendingResults.length };
+
+    const finalParticipants = participants.map((entry) => entry.id === participantId ? { ...entry, killCount, rank } : entry);
+    const settlement = calculateTournamentAwards({
+      categoryName: matchData.category.name,
+      entryFee: Number(matchData.match.entryFee),
+      currentPlayers: matchData.match.currentPlayers,
+      perKillReward: Number(matchData.match.perKillReward),
+      participants: finalParticipants,
+    });
+
+    for (const award of settlement.awards) {
+      const { killReward, rankPrize, totalAward } = award;
+      if (totalAward > 0) {
+        await tx.update(wallets).set({ winningBalance: sql`${wallets.winningBalance} + ${totalAward}` })
+          .where(eq(wallets.userId, award.userId));
+      }
+      if (killReward > 0) await tx.insert(transactions).values({
+        userId: award.userId, type: "kill_reward", amount: killReward.toFixed(2), balanceType: "winning",
+        matchId: matchData.match.id, status: "completed", description: `${award.killCount} kills × ${Number(matchData.match.perKillReward).toFixed(2)} Coins`,
+      });
+      if (rankPrize > 0) await tx.insert(transactions).values({
+        userId: award.userId, type: "prize_win", amount: rankPrize.toFixed(2), balanceType: "winning",
+        matchId: matchData.match.id, status: "completed",
+        description: matchData.category.name === "BR" ? `BR rank ${award.rank} prize` : "Match winner prize",
+      });
+      await tx.update(matchParticipants).set({ prizeAwarded: totalAward.toFixed(2), status: "completed", updatedAt: new Date() })
+        .where(eq(matchParticipants.id, award.id));
+    }
+
+    await tx.update(matches).set({
+      status: "completed", totalPrizePool: settlement.netPrizePool.toFixed(2), adminProfitDeducted: settlement.adminProfit.toFixed(2), updatedAt: new Date(),
+    }).where(eq(matches.id, matchData.match.id));
+
+    return { settled: true, pendingResults: 0, matchId: matchData.match.id, netPrizePool: settlement.netPrizePool, adminProfit: settlement.adminProfit };
+  });
 }
 
 export async function createTransaction(transaction: InsertTransaction): Promise<number> {
@@ -273,6 +465,43 @@ export async function createWithdrawal(withdrawal: InsertWithdrawal): Promise<nu
   return result[0]!.id;
 }
 
+export async function requestWithdrawal(
+  userId: number,
+  amount: number,
+  payoutMethod: "upi" | "google_play",
+  payoutDetails: string,
+  databaseOverride?: WorkflowDatabase,
+) {
+  return withinWorkflowTransaction(databaseOverride, async (tx) => {
+    await tx.insert(wallets).values({ userId, depositBalance: "0", winningBalance: "0", bonusBalance: "0" })
+      .onConflictDoNothing({ target: wallets.userId });
+    const walletRows = await tx.select().from(wallets).where(eq(wallets.userId, userId)).limit(1).for("update");
+    const wallet = walletRows[0];
+    if (!wallet || Number(wallet.winningBalance) < amount) throw new Error("Insufficient winning balance");
+
+    const withdrawalRows = await tx.insert(withdrawals).values({
+      userId,
+      amount: amount.toFixed(2),
+      payoutMethod,
+      payoutDetails,
+      status: "pending",
+    }).returning({ id: withdrawals.id });
+    const withdrawalId = withdrawalRows[0]!.id;
+    await tx.update(wallets).set({ winningBalance: sql`${wallets.winningBalance} - ${amount}` })
+      .where(eq(wallets.userId, userId));
+    await tx.insert(transactions).values({
+      userId,
+      type: "withdrawal",
+      amount: (-amount).toFixed(2),
+      balanceType: "winning",
+      withdrawalId,
+      status: "pending",
+      description: `Withdrawal request queued via ${payoutMethod}`,
+    });
+    return { withdrawalId };
+  });
+}
+
 export async function getPendingWithdrawals() {
   const db = await requireDb();
   return db.select().from(withdrawals).where(eq(withdrawals.status, "pending")).orderBy(withdrawals.createdAt);
@@ -282,6 +511,41 @@ export async function updateWithdrawalStatus(depositId: number, status: "pending
   const db = await getDb();
   if (!db) throw new Error("Neon database is not configured");
   await db.update(withdrawals).set({ status, rejectionReason: rejectionReason ?? null, updatedAt: new Date() }).where(eq(withdrawals.id, depositId));
+}
+
+export async function processWithdrawalRequest(
+  withdrawalId: number,
+  action: "completed" | "rejected",
+  rejectionReason?: string,
+  databaseOverride?: WorkflowDatabase,
+) {
+  return withinWorkflowTransaction(databaseOverride, async (tx) => {
+    const rows = await tx.select().from(withdrawals).where(eq(withdrawals.id, withdrawalId)).limit(1).for("update");
+    const withdrawal = rows[0];
+    if (!withdrawal) throw new Error("Withdrawal request not found");
+    if (withdrawal.status !== "pending") throw new Error("This withdrawal request has already been processed");
+
+    if (action === "rejected") {
+      await tx.update(wallets).set({ winningBalance: sql`${wallets.winningBalance} + ${Number(withdrawal.amount)}` })
+        .where(eq(wallets.userId, withdrawal.userId));
+      await tx.insert(transactions).values({
+        userId: withdrawal.userId,
+        type: "withdrawal",
+        amount: Number(withdrawal.amount).toFixed(2),
+        balanceType: "winning",
+        withdrawalId,
+        status: "cancelled",
+        description: `Withdrawal rejected and refunded${rejectionReason ? `: ${rejectionReason}` : ""}`,
+      });
+    }
+
+    await tx.update(withdrawals).set({
+      status: action,
+      rejectionReason: action === "rejected" ? (rejectionReason ?? "Rejected by administrator") : null,
+      updatedAt: new Date(),
+    }).where(eq(withdrawals.id, withdrawalId));
+    return { withdrawalId, status: action };
+  });
 }
 
 export async function createReferral(referral: InsertReferral): Promise<number> {

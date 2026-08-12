@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useLocation } from "wouter";
+import { getLoginUrl } from "@/const";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import {
@@ -448,12 +449,34 @@ function UsersManagement() {
 /**
  * Admin login component
  */
-function AdminLogin({ onLogin }: { onLogin: () => void }) {
+function AdminLogin({
+  onLogin,
+  isAuthenticated,
+  isCheckingAccess,
+  hasServerAccess,
+}: {
+  onLogin: () => void;
+  isAuthenticated: boolean;
+  isCheckingAccess: boolean;
+  hasServerAccess: boolean;
+}) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
   const handleLogin = () => {
+    if (!isAuthenticated) {
+      window.location.href = getLoginUrl();
+      return;
+    }
+    if (isCheckingAccess) {
+      setError("Checking administrator access. Please wait.");
+      return;
+    }
+    if (!hasServerAccess) {
+      setError("This authenticated account is not authorized for the Admin Dashboard.");
+      return;
+    }
     // Admin credentials: R-ESPORTS / $ROSIDUL₹
     if (username === "R-ESPORTS" && password === "$ROSIDUL₹") {
       localStorage.setItem("adminLoggedIn", "true");
@@ -503,8 +526,9 @@ function AdminLogin({ onLogin }: { onLogin: () => void }) {
           <Button
             className="btn-neon w-full"
             onClick={handleLogin}
+            disabled={isCheckingAccess}
           >
-            Login to Dashboard
+            {!isAuthenticated ? "Sign In With Owner Account" : isCheckingAccess ? "Checking Access..." : "Login to Dashboard"}
           </Button>
         </div>
 
@@ -522,6 +546,9 @@ function AdminLogin({ onLogin }: { onLogin: () => void }) {
 function AdminDashboardContent() {
   const [, setLocation] = useLocation();
   const { logout } = useAuth();
+  const [resultParticipantId, setResultParticipantId] = useState("");
+  const [resultKillCount, setResultKillCount] = useState("");
+  const [resultRank, setResultRank] = useState("");
 
   // Fetch pending deposits
   const { data: pendingDeposits = [] } = trpc.deposits.getPending.useQuery();
@@ -538,30 +565,60 @@ function AdminDashboardContent() {
   // Approve deposit mutation
   const approveDepositMutation = trpc.deposits.approve.useMutation({
     onSuccess: () => {
-      alert("Deposit approved!");
+      toast.success("Deposit approved and credited to the player wallet.");
+      utils.deposits.getPending.invalidate();
     },
   });
 
   // Reject deposit mutation
   const rejectDepositMutation = trpc.deposits.reject.useMutation({
     onSuccess: () => {
-      alert("Deposit rejected!");
+      toast.success("Deposit rejected.");
+      utils.deposits.getPending.invalidate();
     },
   });
 
   // Approve withdrawal mutation
   const approveWithdrawalMutation = trpc.withdrawals.approve.useMutation({
     onSuccess: () => {
-      alert("Withdrawal approved!");
+      toast.success("Withdrawal marked as completed.");
+      utils.withdrawals.getPending.invalidate();
     },
   });
 
   // Reject withdrawal mutation
   const rejectWithdrawalMutation = trpc.withdrawals.reject.useMutation({
     onSuccess: () => {
-      alert("Withdrawal rejected!");
+      toast.success("Withdrawal rejected and refunded to Winning Balance.");
+      utils.withdrawals.getPending.invalidate();
     },
   });
+
+  const submitResultMutation = trpc.results.submitResults.useMutation({
+    onSuccess: (result) => {
+      if (result.settled) {
+        toast.success("All results received. Kill and rank prizes were credited to Winning Balances.");
+      } else {
+        toast.success(`${result.pendingResults} player result(s) remain before automatic settlement.`);
+      }
+      setResultParticipantId("");
+      setResultKillCount("");
+      setResultRank("");
+      utils.admin.getAllMatches.invalidate();
+    },
+    onError: (error) => toast.error(error.message || "Unable to submit result"),
+  });
+
+  const handleSubmitResult = () => {
+    const participantId = Number(resultParticipantId);
+    const killCount = Number(resultKillCount);
+    const rank = Number(resultRank);
+    if (!Number.isInteger(participantId) || participantId <= 0 || !Number.isInteger(killCount) || killCount < 0 || !Number.isInteger(rank) || rank < 1) {
+      toast.error("Enter a valid participant ID, kill count, and rank.");
+      return;
+    }
+    submitResultMutation.mutate({ participantId, killCount, rank });
+  };
 
   // Auto-refresh stats every 5 seconds
   React.useEffect(() => {
@@ -792,38 +849,39 @@ function AdminDashboardContent() {
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
                     <label className="block text-sm font-semibold mb-2">Participant ID</label>
-                    <Input
-                      type="number"
-                      placeholder="Enter participant ID"
-                      className="input-gaming"
+                      <Input
+                        type="number"
+                        placeholder="Enter participant ID"
+                        value={resultParticipantId}
+                        onChange={(event) => setResultParticipantId(event.target.value)}
+                        className="input-gaming"
                     />
                   </div>
                   <div>
                     <label className="block text-sm font-semibold mb-2">Kill Count</label>
-                    <Input
-                      type="number"
-                      placeholder="Enter kill count"
-                      className="input-gaming"
+                      <Input
+                        type="number"
+                        placeholder="Enter kill count"
+                        value={resultKillCount}
+                        onChange={(event) => setResultKillCount(event.target.value)}
+                        className="input-gaming"
                     />
                   </div>
                   <div>
                     <label className="block text-sm font-semibold mb-2">Rank</label>
-                    <Input
-                      type="number"
-                      placeholder="Enter rank (1-5 for BR)"
-                      className="input-gaming"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold mb-2">Prize Awarded</label>
-                    <Input
-                      type="number"
-                      placeholder="Enter prize amount"
-                      className="input-gaming"
+                      <Input
+                        type="number"
+                        placeholder="Enter rank (1-5 for BR)"
+                        value={resultRank}
+                        onChange={(event) => setResultRank(event.target.value)}
+                        className="input-gaming"
                     />
                   </div>
                 </div>
-                <Button className="btn-neon w-full">Submit Result</Button>
+                <p className="text-sm text-muted-foreground">Prize amounts are calculated and credited automatically after every joined player's result is submitted.</p>
+                <Button className="btn-neon w-full" onClick={handleSubmitResult} disabled={submitResultMutation.isPending}>
+                  {submitResultMutation.isPending ? "Saving Result..." : "Submit Result & Settle Prizes"}
+                </Button>
               </div>
             </Card>
           </TabsContent>
@@ -837,12 +895,26 @@ function AdminDashboardContent() {
  * Admin Dashboard Page with authentication
  */
 export default function AdminDashboard() {
+  const { isAuthenticated, loading } = useAuth();
   const [isLoggedIn, setIsLoggedIn] = useState(
     localStorage.getItem("adminLoggedIn") === "true"
   );
+  const adminAuthorization = trpc.admin.authorize.useQuery(undefined, {
+    enabled: isAuthenticated,
+    retry: false,
+  });
 
-  if (!isLoggedIn) {
-    return <AdminLogin onLogin={() => setIsLoggedIn(true)} />;
+  if (loading) {
+    return <div className="min-h-screen bg-background" />;
+  }
+
+  if (!isLoggedIn || !adminAuthorization.data?.authorized) {
+    return <AdminLogin
+      onLogin={() => setIsLoggedIn(true)}
+      isAuthenticated={isAuthenticated}
+      isCheckingAccess={adminAuthorization.isLoading}
+      hasServerAccess={adminAuthorization.data?.authorized === true}
+    />;
   }
 
   return <AdminDashboardContent />;
