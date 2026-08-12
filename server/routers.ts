@@ -2,8 +2,9 @@ import {
   getSessionCookieOptions,
 } from "./_core/cookies";
 import { getDb } from "./db";
-import { matches, referrals, deposits } from "../drizzle/schema";
+import { matches, referrals, deposits, users } from "../drizzle/schema";
 import { eq, desc, and, gte, lt } from "drizzle-orm";
+import { verifyAdminPassword } from "./adminCredentials";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router, protectedProcedure } from "./_core/trpc";
 import { z } from "zod";
@@ -366,6 +367,25 @@ export const appRouter = router({
    */
   admin: router({
     authorize: adminProcedure.query(() => ({ authorized: true })),
+
+    verifyCredentials: adminProcedure
+      .input(z.object({ username: z.string().min(1).max(64), password: z.string().min(1).max(256) }))
+      .mutation(async ({ ctx, input }) => {
+        if (!ctx.user.email) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Your authenticated account has no email address" });
+        }
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Neon database is not configured" });
+        const records = await db.select({
+          adminUsername: users.adminUsername,
+          adminPasswordHash: users.adminPasswordHash,
+        }).from(users).where(eq(users.email, ctx.user.email));
+        const credential = records.find((record) => record.adminUsername === input.username && record.adminPasswordHash);
+        if (!credential?.adminPasswordHash || !verifyAdminPassword(input.password, credential.adminPasswordHash)) {
+          throw new TRPCError({ code: "UNAUTHORIZED", message: "Invalid administrator credentials" });
+        }
+        return { verified: true };
+      }),
 
     getStats: adminProcedure.query(async () => {
       const db = await getDb();

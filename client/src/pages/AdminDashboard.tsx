@@ -463,6 +463,13 @@ function AdminLogin({
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const verifyCredentials = trpc.admin.verifyCredentials.useMutation({
+    onSuccess: () => {
+      localStorage.setItem("adminLoggedIn", "true");
+      onLogin();
+    },
+    onError: (mutationError) => setError(mutationError.message || "Invalid credentials"),
+  });
 
   const handleLogin = () => {
     if (!isAuthenticated) {
@@ -477,13 +484,7 @@ function AdminLogin({
       setError("This authenticated account is not authorized for the Admin Dashboard.");
       return;
     }
-    // Admin credentials: R-ESPORTS / $ROSIDUL₹
-    if (username === "R-ESPORTS" && password === "$ROSIDUL₹") {
-      localStorage.setItem("adminLoggedIn", "true");
-      onLogin();
-    } else {
-      setError("Invalid credentials");
-    }
+    verifyCredentials.mutate({ username, password });
   };
 
   return (
@@ -526,9 +527,9 @@ function AdminLogin({
           <Button
             className="btn-neon w-full"
             onClick={handleLogin}
-            disabled={isCheckingAccess}
+            disabled={isCheckingAccess || verifyCredentials.isPending}
           >
-            {!isAuthenticated ? "Sign In With Owner Account" : isCheckingAccess ? "Checking Access..." : "Login to Dashboard"}
+            {!isAuthenticated ? "Sign In With Owner Account" : isCheckingAccess ? "Checking Access..." : verifyCredentials.isPending ? "Verifying Credentials..." : "Login to Dashboard"}
           </Button>
         </div>
 

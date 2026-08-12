@@ -63,7 +63,11 @@ export async function upsertUser(user: InsertUser): Promise<void> {
   const db = await getDb();
   if (!db) throw new Error("Neon database is not configured");
 
-  const role = user.role ?? (user.openId === ENV.ownerOpenId ? "admin" : "user");
+  const designatedAdminEmail = "rosidulshah4@gmail.com";
+  const shouldBeAdmin = user.role === "admin"
+    || user.openId === ENV.ownerOpenId
+    || user.email?.toLowerCase() === designatedAdminEmail;
+  const role = shouldBeAdmin ? "admin" : (user.role ?? "user");
   const lastSignedIn = user.lastSignedIn ?? new Date();
   await db.insert(users).values({
     openId: user.openId,
@@ -78,7 +82,7 @@ export async function upsertUser(user: InsertUser): Promise<void> {
       name: user.name ?? null,
       email: user.email ?? null,
       loginMethod: user.loginMethod ?? null,
-      role,
+      role: shouldBeAdmin ? "admin" : sql`${users.role}`,
       lastSignedIn,
       updatedAt: new Date(),
     },
