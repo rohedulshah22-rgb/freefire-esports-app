@@ -48,6 +48,11 @@ import {
   getLeaderboardSettings,
   resetLeaderboardWeeklyCycle,
   updateLeaderboardRewards,
+  enrollReferralCode,
+  getReferralAdminStats,
+  getReferralDashboard,
+  getReferralSettings,
+  updateReferralSettings,
 } from "./db";
 import { ADMIN_PANEL_ACCESS_COOKIE_NAME, ADMIN_PANEL_ACCESS_MS, ADMIN_SESSION_COOKIE_NAME, COOKIE_NAME } from "@shared/const";
 import { TRPCError } from "@trpc/server";
@@ -74,6 +79,12 @@ const adminProcedure = ownerAdminProcedure.use(({ ctx, next }) => {
   }
   return next();
 });
+
+function getReferralSignals(req: { headers: Record<string, string | string[] | undefined>; socket?: { remoteAddress?: string } }, deviceToken?: string) {
+  const forwarded = req.headers["x-forwarded-for"];
+  const forwardedIp = Array.isArray(forwarded) ? forwarded[0] : forwarded?.split(",")[0]?.trim();
+  return { deviceToken, requestOrigin: forwardedIp ?? req.socket?.remoteAddress ?? null };
+}
 
 export const appRouter = router({
   system: systemRouter,
@@ -128,6 +139,29 @@ export const appRouter = router({
 
     resetWeeklyCycle: adminProcedure
       .mutation(({ ctx }) => resetLeaderboardWeeklyCycle(ctx.user.id)),
+  }),
+
+  referrals: router({
+    dashboard: protectedProcedure
+      .input(z.object({ deviceToken: z.string().trim().min(8).max(128).optional() }).optional())
+      .query(({ ctx, input }) => getReferralDashboard(ctx.user.id, getReferralSignals(ctx.req, input?.deviceToken))),
+
+    applyCode: protectedProcedure
+      .input(z.object({
+        referralCode: z.string().trim().min(4).max(32),
+        deviceToken: z.string().trim().min(8).max(128).optional(),
+      }))
+      .mutation(({ ctx, input }) => enrollReferralCode(ctx.user.id, input.referralCode, getReferralSignals(ctx.req, input.deviceToken))),
+
+    adminSettings: adminProcedure.query(() => getReferralSettings()),
+    adminStats: adminProcedure.query(() => getReferralAdminStats()),
+    updateSettings: adminProcedure
+      .input(z.object({
+        isEnabled: z.boolean(),
+        referrerBonusAmount: z.string().regex(/^\d+(?:\.\d{1,2})?$/, "Enter a valid referrer reward"),
+        refereeBonusAmount: z.string().regex(/^\d+(?:\.\d{1,2})?$/, "Enter a valid referee reward"),
+      }))
+      .mutation(({ ctx, input }) => updateReferralSettings(ctx.user.id, input)),
   }),
 
   /**

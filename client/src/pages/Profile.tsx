@@ -1,6 +1,7 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
 import { ADMIN_PANEL_LOGIN_PATH, canOpenAdminPanel } from "@/lib/adminNavigation";
+import { getReferralDeviceToken } from "@/lib/referralDevice";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -16,6 +17,10 @@ import {
   Mail,
   ShieldCheck,
   Sparkles,
+  Copy,
+  Gift,
+  Share2,
+  Users,
   SwitchCamera,
   Trophy,
   UserRound,
@@ -37,6 +42,9 @@ export default function ProfilePage() {
   const [editing, setEditing] = useState(false);
   const [freeFireName, setFreeFireName] = useState("");
   const [freeFireUid, setFreeFireUid] = useState("");
+  const [referralCodeInput, setReferralCodeInput] = useState(() => typeof window === "undefined" ? "" : new URLSearchParams(window.location.search).get("ref")?.toUpperCase() ?? "");
+  const referralDeviceToken = getReferralDeviceToken();
+  const referralQuery = trpc.referrals.dashboard.useQuery({ deviceToken: referralDeviceToken }, { enabled: isAuthenticated });
 
   useEffect(() => {
     if (!profileQuery.data) return;
@@ -51,6 +59,15 @@ export default function ProfilePage() {
       toast.success("Free Fire profile updated.");
     },
     onError: (error) => toast.error(error.message || "Unable to update your profile."),
+  });
+
+  const applyReferral = trpc.referrals.applyCode.useMutation({
+    onSuccess: (result) => {
+      utils.referrals.dashboard.invalidate();
+      toast.success(result.blocked ? "Referral recorded, but rewards are pending anti-fraud review." : "Referral code applied. Complete your first match join to unlock both rewards.");
+      setReferralCodeInput("");
+    },
+    onError: (error) => toast.error(error.message || "Unable to apply this referral code."),
   });
 
   const handleExit = async (switchAccount: boolean) => {
@@ -84,6 +101,17 @@ export default function ProfilePage() {
   const totalEarnings = Number(profile.totalEarnings || 0).toFixed(2);
   const canAccessAdminPanel = canOpenAdminPanel(profile.user.email);
   const openAdminPanel = () => setLocation(ADMIN_PANEL_LOGIN_PATH);
+  const referralShareLink = referralQuery.data ? `${window.location.origin}/profile?ref=${referralQuery.data.referralCode}` : "";
+  const copyReferralLink = async () => {
+    if (!referralShareLink) return;
+    try { await navigator.clipboard.writeText(referralShareLink); toast.success("Referral link copied."); }
+    catch { toast.error("Unable to copy the referral link on this device."); }
+  };
+  const shareReferralLink = async () => {
+    if (!referralShareLink) return;
+    if (navigator.share) { await navigator.share({ title: "Join Pro-Esports", text: "Join me in Free Fire tournaments and earn bonus Coins after your first match.", url: referralShareLink }); return; }
+    await copyReferralLink();
+  };
 
   return (
     <main className="min-h-screen bg-background pb-24">
@@ -147,6 +175,19 @@ export default function ProfilePage() {
           <Card className="card-gaming"><div className="flex items-center gap-3"><Crosshair className="h-7 w-7 text-primary" /><div><p className="text-xs text-muted-foreground">Total Kills</p><p className="text-2xl font-black text-foreground">{profile.totalKills}</p></div></div></Card>
           <Card className="card-gaming col-span-2 sm:col-span-1"><div className="flex items-center gap-3"><Sparkles className="h-7 w-7 text-secondary" /><div><p className="text-xs text-muted-foreground">Total Earnings</p><p className="text-2xl font-black text-secondary">{totalEarnings} <span className="text-sm">Coins</span></p></div></div></Card>
         </section>
+
+        <Card className="card-gaming border-primary/35">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div><div className="flex items-center gap-2"><Gift className="h-5 w-5 text-accent" /><h2 className="text-lg font-bold">Refer & Earn</h2></div><p className="mt-1 text-sm text-muted-foreground">Invite friends. Both players receive Bonus Coins after your friend completes their first valid match join.</p></div>
+            <Badge className="w-fit border-accent/35 bg-accent/10 text-accent">Dual rewards active</Badge>
+          </div>
+          {referralQuery.isLoading ? <p className="mt-5 text-sm text-muted-foreground">Loading referral program...</p> : referralQuery.data && <div className="mt-5 space-y-4">
+            <div className="grid grid-cols-3 gap-2 text-center"><div className="rounded-lg bg-primary/10 p-3"><p className="text-xs text-muted-foreground">Invited</p><p className="text-xl font-black text-primary">{referralQuery.data.summary.invitedCount}</p></div><div className="rounded-lg bg-accent/10 p-3"><p className="text-xs text-muted-foreground">Rewarded</p><p className="text-xl font-black text-accent">{referralQuery.data.summary.rewardedCount}</p></div><div className="rounded-lg bg-secondary/10 p-3"><p className="text-xs text-muted-foreground">Earned</p><p className="text-xl font-black text-secondary">{referralQuery.data.summary.earnedBonus.toFixed(2)}</p></div></div>
+            <div className="rounded-xl border border-primary/30 bg-primary/5 p-4"><p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">Your Referral Code</p><div className="mt-2 flex flex-col gap-3 sm:flex-row"><div className="flex-1 rounded-lg border border-accent/30 bg-background px-3 py-2 font-mono font-black tracking-wider text-accent">{referralQuery.data.referralCode}</div><div className="flex gap-2"><Button type="button" variant="outline" className="flex-1 border-primary/40 text-primary hover:bg-primary/10" onClick={() => void copyReferralLink()}><Copy className="mr-2 h-4 w-4" />Copy</Button><Button type="button" className="btn-neon flex-1" onClick={() => void shareReferralLink()}><Share2 className="mr-2 h-4 w-4" />Share</Button></div></div></div>
+            <div className="rounded-xl border border-muted-foreground/20 p-4"><p className="font-semibold">Have a friend’s code?</p><p className="mt-1 text-xs text-muted-foreground">Apply once only. Matching device or network signals safely block reward abuse.</p><div className="mt-3 flex gap-2"><Input value={referralCodeInput} onChange={(event) => setReferralCodeInput(event.target.value.toUpperCase())} maxLength={32} placeholder="Enter referral code" className="input-gaming font-mono" /><Button type="button" variant="outline" disabled={applyReferral.isPending || !referralCodeInput.trim()} onClick={() => applyReferral.mutate({ referralCode: referralCodeInput, deviceToken: referralDeviceToken })}>{applyReferral.isPending ? "Applying..." : "Apply"}</Button></div></div>
+            <div><div className="mb-3 flex items-center gap-2"><Users className="h-4 w-4 text-primary" /><h3 className="font-semibold">Referral History</h3></div>{referralQuery.data.history.length ? <div className="space-y-2">{referralQuery.data.history.map((entry) => <div key={entry.id} className="flex items-center justify-between rounded-lg border border-muted-foreground/15 bg-muted/15 px-3 py-2"><div><p className="font-semibold">{entry.invitedName}</p><p className="text-xs text-muted-foreground">{new Date(entry.createdAt).toLocaleDateString()}</p></div><div className="text-right"><Badge variant="outline" className={entry.status === "rewarded" ? "border-accent/40 text-accent" : entry.status === "blocked" ? "border-destructive/40 text-destructive" : "border-primary/40 text-primary"}>{entry.status}</Badge><p className="mt-1 text-xs text-muted-foreground">+{Number(entry.referrerBonusAmount).toFixed(2)} Coins</p></div></div>)}</div> : <p className="rounded-lg border border-dashed border-muted-foreground/25 p-4 text-center text-sm text-muted-foreground">Your invited players will appear here once they apply your code.</p>}</div>
+          </div>}
+        </Card>
 
         <Card className="card-gaming">
           <h2 className="mb-1 text-lg font-bold">Account Actions</h2>

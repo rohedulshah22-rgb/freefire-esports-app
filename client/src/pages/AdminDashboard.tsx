@@ -298,6 +298,47 @@ function LeaderboardManagement() {
   );
 }
 
+function ReferralManagement() {
+  const settingsQuery = trpc.referrals.adminSettings.useQuery();
+  const statsQuery = trpc.referrals.adminStats.useQuery();
+  const utils = trpc.useUtils();
+  const [isEnabled, setIsEnabled] = useState(true);
+  const [referrerBonusAmount, setReferrerBonusAmount] = useState("");
+  const [refereeBonusAmount, setRefereeBonusAmount] = useState("");
+
+  React.useEffect(() => {
+    if (!settingsQuery.data) return;
+    setIsEnabled(settingsQuery.data.isEnabled);
+    setReferrerBonusAmount(String(settingsQuery.data.referrerBonusAmount));
+    setRefereeBonusAmount(String(settingsQuery.data.refereeBonusAmount));
+  }, [settingsQuery.data]);
+
+  const updateSettings = trpc.referrals.updateSettings.useMutation({
+    onSuccess: () => {
+      toast.success("Refer & Earn settings saved.");
+      utils.referrals.adminSettings.invalidate();
+      utils.referrals.adminStats.invalidate();
+    },
+    onError: (error) => toast.error(error.message || "Unable to save referral settings."),
+  });
+  const stats = statsQuery.data;
+
+  return (
+    <div className="space-y-5">
+      <div className="grid gap-3 sm:grid-cols-4">
+        <Card className="border-primary/30 bg-primary/5 p-4"><p className="text-xs text-muted-foreground">Total Referrals</p><p className="mt-1 text-2xl font-black text-primary">{stats?.totalReferrals ?? 0}</p></Card>
+        <Card className="border-accent/30 bg-accent/5 p-4"><p className="text-xs text-muted-foreground">Rewarded</p><p className="mt-1 text-2xl font-black text-accent">{stats?.rewardedReferrals ?? 0}</p></Card>
+        <Card className="border-secondary/30 bg-secondary/5 p-4"><p className="text-xs text-muted-foreground">Bonus Paid</p><p className="mt-1 text-2xl font-black text-secondary">{stats?.totalPaid?.toFixed(2) ?? "0.00"}</p></Card>
+        <Card className="border-destructive/30 bg-destructive/5 p-4"><p className="text-xs text-muted-foreground">Fraud Blocked</p><p className="mt-1 text-2xl font-black text-destructive">{stats?.blockedReferrals ?? 0}</p></Card>
+      </div>
+      <div className="rounded-xl border border-primary/30 bg-primary/5 p-4"><h3 className="font-bold text-primary">Dual Reward Rules</h3><p className="mt-1 text-sm text-muted-foreground">Rewards are credited as Bonus Coins only after the referred player’s first valid match join. Matching device or request-origin signals safely block payouts.</p></div>
+      <div className="grid gap-4 sm:grid-cols-2"><div><label className="mb-2 block text-sm font-semibold">Referrer Reward (Coins)</label><Input type="number" min="0" inputMode="decimal" className="input-gaming" value={referrerBonusAmount} onChange={(event) => setReferrerBonusAmount(event.target.value)} /></div><div><label className="mb-2 block text-sm font-semibold">New Player Reward (Coins)</label><Input type="number" min="0" inputMode="decimal" className="input-gaming" value={refereeBonusAmount} onChange={(event) => setRefereeBonusAmount(event.target.value)} /></div></div>
+      <label className="flex cursor-pointer items-center justify-between rounded-xl border border-muted-foreground/25 px-4 py-3"><span><span className="block font-semibold">Refer & Earn program</span><span className="text-xs text-muted-foreground">Allow players to apply a referral code.</span></span><input type="checkbox" checked={isEnabled} onChange={(event) => setIsEnabled(event.target.checked)} className="h-5 w-5 accent-red-500" /></label>
+      <Button className="btn-neon w-full" disabled={updateSettings.isPending} onClick={() => updateSettings.mutate({ isEnabled, referrerBonusAmount, refereeBonusAmount })}>{updateSettings.isPending ? "Saving Program..." : "Save Referral Settings"}</Button>
+    </div>
+  );
+}
+
 /**
  * Users Management Component
  */
@@ -758,13 +799,14 @@ function AdminDashboardContent() {
 
         {/* Tabs */}
         <Tabs defaultValue="deposits" className="w-full">
-          <TabsList className="grid h-auto w-full grid-cols-3 gap-1 md:grid-cols-6">
+          <TabsList className="grid h-auto w-full grid-cols-3 gap-1 md:grid-cols-7">
             <TabsTrigger value="create-match">Create Match</TabsTrigger>
             <TabsTrigger value="users">Users Management</TabsTrigger>
             <TabsTrigger value="deposits">Deposits</TabsTrigger>
             <TabsTrigger value="withdrawals">Withdrawals</TabsTrigger>
             <TabsTrigger value="results">Match Results</TabsTrigger>
             <TabsTrigger value="leaderboard">Leaderboard</TabsTrigger>
+            <TabsTrigger value="referrals">Refer & Earn</TabsTrigger>
           </TabsList>
 
           {/* Create Match Tab */}
@@ -791,6 +833,14 @@ function AdminDashboardContent() {
               <h2 className="mb-2 flex items-center gap-2 text-lg font-bold"><Trophy className="h-5 w-5 text-accent" />Leaderboard Rewards & Weekly Cycle</h2>
               <p className="mb-5 text-sm text-muted-foreground">Configure podium rewards and begin a fresh weekly ranking window when required.</p>
               <LeaderboardManagement />
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="referrals" className="mt-6">
+            <Card className="card-gaming">
+              <h2 className="mb-2 flex items-center gap-2 text-lg font-bold"><Users className="h-5 w-5 text-primary" />Refer & Earn Program</h2>
+              <p className="mb-5 text-sm text-muted-foreground">Configure bonus amounts, review program totals, and monitor automatic fraud blocks.</p>
+              <ReferralManagement />
             </Card>
           </TabsContent>
 

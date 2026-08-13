@@ -1,6 +1,7 @@
 import { and, desc, eq, gte, lt, sql } from "drizzle-orm";
 import { drizzle, type NodePgDatabase } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
+import { createHash, randomUUID } from "node:crypto";
 import * as schema from "../drizzle/schema";
 import {
   type InsertDeposit,
@@ -19,6 +20,7 @@ import {
   matches,
   paymentAttempts,
   referrals,
+  referralSettings,
   transactions,
   users,
   wallets,
@@ -133,6 +135,183 @@ export async function getUserById(userId: number) {
   const db = await requireDb();
   const result = await db.select().from(users).where(eq(users.id, userId)).limit(1);
   return result[0];
+}
+
+export type ReferralFraudSignals = {
+  deviceToken?: string | null;
+  requestOrigin?: string | null;
+};
+
+function hashReferralSignal(value?: string | null) {
+  const normalized = value?.trim();
+  return normalized ? createHash("sha256").update(normalized).digest("hex") : null;
+}
+
+function normalizeReferralCode(code: string) {
+  return code.trim().toUpperCase();
+}
+
+async function getOrCreateReferralCode(userId: number, db: WorkflowDatabase) {
+  const [user] = await db.select({ referralCode: users.referralCode }).from(users)
+    .where(eq(users.id, userId)).limit(1);
+  if (!user) throw new Error("Player account not found");
+  if (user.referralCode) return user.referralCode;
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const referralCode = `FF${userId}-${randomUUID().replaceAll("-", "").slice(0, 8).toUpperCase()}`;
+    const updated = await db.update(users).set({ referralCode, updatedAt: new Date() })
+      .where(and(eq(users.id, userId), sql`${users.referralCode} IS NULL`))
+      .returning({ referralCode: users.referralCode });
+    if (updated[0]?.referralCode) return updated[0].referralCode;
+    const [existing] = await db.select({ referralCode: users.referralCode }).from(users)
+      .where(eq(users.id, userId)).limit(1);
+    if (existing?.referralCode) return existing.referralCode;
+  }
+  throw new Error("Unable to generate a referral code");
+}
+
+async function captureReferralFraudSignals(userId: number, signals: ReferralFraudSignals, db: WorkflowDatabase) {
+  const deviceHash = hashReferralSignal(signals.deviceToken);
+  const ipHash = hashReferralSignal(signals.requestOrigin);
+  if (!deviceHash && !ipHash) return;
+  await db.update(users).set({
+    referralDeviceHash: deviceHash ? sql`COALESCE(${users.referralDeviceHash}, ${deviceHash})` : undefined,
+    referralIpHash: ipHash ? sql`COALESCE(${users.referralIpHash}, ${ipHash})` : undefined,
+    updatedAt: new Date(),
+  }).where(eq(users.id, userId));
+}
+
+export async function getReferralSettings(databaseOverride?: WorkflowDatabase) {
+  const db = databaseOverride ?? await requireDb();
+  await db.insert(referralSettings).values({ id: 1 }).onConflictDoNothing();
+  const [settings] = await db.select().from(referralSettings).where(eq(referralSettings.id, 1)).limit(1);
+  if (!settings) throw new Error("Referral settings could not be initialized");
+  return settings;
+}
+
+export async function getReferralDashboard(
+  userId: number,
+  signals: ReferralFraudSignals,
+  databaseOverride?: WorkflowDatabase,
+) {
+  const db = databaseOverride ?? await requireDb();
+  await captureReferralFraudSignals(userId, signals, db);
+  const referralCode = await getOrCreateReferralCode(userId, db);
+  const settings = await getReferralSettings(db);
+  const history = await db.select({
+    id: referrals.id,
+    referralCode: referrals.referralCode,
+    status: referrals.status,
+    fraudReason: referrals.fraudReason,
+    referrerBonusAmount: referrals.referrerBonusAmount,
+    refereeBonusAmount: referrals.refereeBonusAmount,
+    qualifiedAt: referrals.qualifiedAt,
+    rewardedAt: referrals.rewardedAt,
+    createdAt: referrals.createdAt,
+    invitedName: sql<string>`COALESCE(${users.freeFireName}, ${users.name}, 'Free Fire Player')`,
+  }).from(referrals).innerJoin(users, eq(referrals.referredUserId, users.id))
+    .where(eq(referrals.referrerId, userId)).orderBy(desc(referrals.createdAt));
+  const [summary] = await db.select({
+    invitedCount: sql<number>`COUNT(*)::int`,
+    rewardedCount: sql<number>`COUNT(*) FILTER (WHERE ${referrals.status} = 'rewarded')::int`,
+    earnedBonus: sql<string>`COALESCE(SUM(${referrals.referrerBonusAmount}) FILTER (WHERE ${referrals.status} = 'rewarded'), 0)::text`,
+  }).from(referrals).where(eq(referrals.referrerId, userId));
+  return { referralCode, settings, history, summary: { invitedCount: Number(summary?.invitedCount ?? 0), rewardedCount: Number(summary?.rewardedCount ?? 0), earnedBonus: Number(summary?.earnedBonus ?? 0) } };
+}
+
+export async function enrollReferralCode(
+  referredUserId: number,
+  referralCodeInput: string,
+  signals: ReferralFraudSignals,
+  databaseOverride?: WorkflowDatabase,
+) {
+  return withinWorkflowTransaction(databaseOverride, async (tx) => {
+    const referralCode = normalizeReferralCode(referralCodeInput);
+    const [referred] = await tx.select().from(users).where(eq(users.id, referredUserId)).limit(1).for("update");
+    if (!referred) throw new Error("Player account not found");
+    const [existingReferral] = await tx.select().from(referrals).where(eq(referrals.referredUserId, referredUserId)).limit(1).for("update");
+    if (existingReferral || referred.referredBy) throw new Error("A referral code has already been applied to this account");
+    const [referrer] = await tx.select().from(users).where(eq(users.referralCode, referralCode)).limit(1).for("update");
+    if (!referrer) throw new Error("Referral code not found");
+    if (referrer.id === referredUserId) throw new Error("You cannot apply your own referral code");
+    const settings = await getReferralSettings(tx);
+    if (!settings.isEnabled) throw new Error("Refer & Earn is currently unavailable");
+
+    await captureReferralFraudSignals(referredUserId, signals, tx);
+    const [refreshedReferred] = await tx.select().from(users).where(eq(users.id, referredUserId)).limit(1).for("update");
+    const sameDevice = !!referrer.referralDeviceHash && referrer.referralDeviceHash === refreshedReferred?.referralDeviceHash;
+    const sameOrigin = !!referrer.referralIpHash && referrer.referralIpHash === refreshedReferred?.referralIpHash;
+    const fraudReason = sameDevice ? "same_device" : sameOrigin ? "same_request_origin" : null;
+    const status = fraudReason ? "blocked" : "pending";
+    const referralRows = await tx.insert(referrals).values({
+      referrerId: referrer.id, referredUserId, referralCode, status, fraudReason,
+      referrerBonusAmount: settings.referrerBonusAmount, refereeBonusAmount: settings.refereeBonusAmount,
+      bonusAmount: settings.referrerBonusAmount,
+    }).returning({ id: referrals.id, status: referrals.status });
+    await tx.update(users).set({ referredBy: referrer.id, updatedAt: new Date() }).where(eq(users.id, referredUserId));
+    return { referralId: referralRows[0]!.id, status: referralRows[0]!.status, blocked: !!fraudReason };
+  });
+}
+
+export async function settleReferralRewardAfterFirstMatchJoin(
+  referredUserId: number,
+  databaseOverride?: WorkflowDatabase,
+) {
+  return withinWorkflowTransaction(databaseOverride, async (tx) => {
+    const referralRows = await tx.select().from(referrals).where(eq(referrals.referredUserId, referredUserId)).limit(1).for("update");
+    const referral = referralRows[0];
+    if (!referral || referral.status !== "pending") return { rewarded: false, reason: referral?.status ?? "no_referral" } as const;
+    const [matchCount] = await tx.select({ count: sql<number>`COUNT(*)::int` }).from(matchParticipants)
+      .where(eq(matchParticipants.userId, referredUserId));
+    if (Number(matchCount?.count ?? 0) !== 1) return { rewarded: false, reason: "not_first_join" } as const;
+    const settings = await getReferralSettings(tx);
+    if (!settings.isEnabled) return { rewarded: false, reason: "disabled" } as const;
+
+    for (const userId of [referral.referrerId, referral.referredUserId]) {
+      await tx.insert(wallets).values({ userId, depositBalance: "0", winningBalance: "0", bonusBalance: "0" })
+        .onConflictDoNothing({ target: wallets.userId });
+      await tx.select().from(wallets).where(eq(wallets.userId, userId)).limit(1).for("update");
+    }
+    await tx.update(wallets).set({ bonusBalance: sql`${wallets.bonusBalance} + ${Number(referral.referrerBonusAmount)}`, updatedAt: new Date() })
+      .where(eq(wallets.userId, referral.referrerId));
+    await tx.update(wallets).set({ bonusBalance: sql`${wallets.bonusBalance} + ${Number(referral.refereeBonusAmount)}`, updatedAt: new Date() })
+      .where(eq(wallets.userId, referral.referredUserId));
+    await tx.insert(transactions).values([
+      { userId: referral.referrerId, type: "referral_bonus", amount: Number(referral.referrerBonusAmount).toFixed(2), balanceType: "bonus", referralId: referral.id, status: "completed", description: "Refer & Earn reward after your invited player joined their first match" },
+      { userId: referral.referredUserId, type: "referral_bonus", amount: Number(referral.refereeBonusAmount).toFixed(2), balanceType: "bonus", referralId: referral.id, status: "completed", description: "Refer & Earn welcome reward after your first match join" },
+    ]);
+    await tx.update(referrals).set({ status: "rewarded", bonusAwarded: true, qualifiedAt: new Date(), rewardedAt: new Date() })
+      .where(eq(referrals.id, referral.id));
+    await tx.update(users).set({ referralBonusAwarded: true, updatedAt: new Date() }).where(eq(users.id, referredUserId));
+    return { rewarded: true, referrerId: referral.referrerId, referredUserId } as const;
+  });
+}
+
+export async function updateReferralSettings(
+  updatedBy: number,
+  input: { isEnabled: boolean; referrerBonusAmount: string; refereeBonusAmount: string },
+) {
+  const db = await requireDb();
+  await getReferralSettings(db);
+  const [settings] = await db.update(referralSettings).set({ ...input, updatedBy, updatedAt: new Date() })
+    .where(eq(referralSettings.id, 1)).returning();
+  await db.insert(adminAuditLog).values({ action: "referral_settings_updated", details: { updatedBy, ...input } });
+  return settings;
+}
+
+export async function getReferralAdminStats() {
+  const db = await requireDb();
+  const [stats] = await db.select({
+    totalReferrals: sql<number>`COUNT(*)::int`,
+    pendingReferrals: sql<number>`COUNT(*) FILTER (WHERE ${referrals.status} = 'pending')::int`,
+    rewardedReferrals: sql<number>`COUNT(*) FILTER (WHERE ${referrals.status} = 'rewarded')::int`,
+    blockedReferrals: sql<number>`COUNT(*) FILTER (WHERE ${referrals.status} = 'blocked')::int`,
+    totalPaid: sql<string>`COALESCE(SUM(${referrals.referrerBonusAmount} + ${referrals.refereeBonusAmount}) FILTER (WHERE ${referrals.status} = 'rewarded'), 0)::text`,
+  }).from(referrals);
+  return {
+    totalReferrals: Number(stats?.totalReferrals ?? 0), pendingReferrals: Number(stats?.pendingReferrals ?? 0),
+    rewardedReferrals: Number(stats?.rewardedReferrals ?? 0), blockedReferrals: Number(stats?.blockedReferrals ?? 0), totalPaid: Number(stats?.totalPaid ?? 0),
+  };
 }
 
 export type LeaderboardMetric = "kills" | "earnings" | "matches";
@@ -540,7 +719,9 @@ export async function joinMatch(
     });
     if (transactionsToCreate.length > 0) await tx.insert(transactions).values(transactionsToCreate);
 
-    return { participantId, matchId, deductedFromDeposit, deductedFromBonus };
+    const referralReward = await settleReferralRewardAfterFirstMatchJoin(userId, tx);
+
+    return { participantId, matchId, deductedFromDeposit, deductedFromBonus, referralReward };
   });
 }
 

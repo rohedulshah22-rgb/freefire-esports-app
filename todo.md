@@ -349,3 +349,15 @@
 ## Phase 53: Admin Return-to-Player Navigation
 - [x] Add a prominent Admin Dashboard header action that returns to the Player App in the same tab
 - [x] Add regression coverage for the Admin-to-Player navigation route
+
+## Phase 54: Shared Preview Synchronization
+- [x] Refresh the development preview from the latest shared project code
+
+## Phase 55: Refer & Earn System
+- [x] Define referral settings, code enrollment, eligibility state, and fraud-signal persistence in Neon
+- [x] Generate a unique referral code and share link for every player
+- [x] Award both users Bonus Coins once after the referred player completes a first valid match join
+- [x] Add referral history and referral-code entry experiences to the Player App
+- [x] Add same-device and request-origin fraud safeguards with safe reward blocking
+- [x] Add owner-admin referral reward settings, referral totals, and fraud-block reporting
+- [x] Add deterministic coverage for enrollment, reward idempotency, fraud prevention, and Admin authorization

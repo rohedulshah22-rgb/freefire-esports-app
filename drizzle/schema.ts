@@ -49,6 +49,8 @@ export const users = pgTable("users", {
   referralCode: varchar("referralCode", { length: 32 }).unique(),
   referredBy: bigint("referredBy", { mode: "number" }).references((): AnyPgColumn => users.id, { onDelete: "set null" }),
   referralBonusAwarded: boolean("referralBonusAwarded").default(false).notNull(),
+  referralDeviceHash: varchar("referralDeviceHash", { length: 128 }),
+  referralIpHash: varchar("referralIpHash", { length: 128 }),
   adminUsername: varchar("adminUsername", { length: 64 }).unique(),
   adminPasswordHash: varchar("adminPasswordHash", { length: 255 }),
   createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
@@ -159,7 +161,23 @@ export const referrals = pgTable("referrals", {
   referralCode: varchar("referralCode", { length: 32 }).notNull(),
   bonusAwarded: boolean("bonusAwarded").default(false).notNull(),
   bonusAmount: numeric("bonusAmount", { precision: 10, scale: 2 }).default("5").notNull(),
+  status: varchar("status", { length: 16 }).default("pending").notNull(),
+  fraudReason: text("fraudReason"),
+  referrerBonusAmount: numeric("referrerBonusAmount", { precision: 10, scale: 2 }).default("5").notNull(),
+  refereeBonusAmount: numeric("refereeBonusAmount", { precision: 10, scale: 2 }).default("5").notNull(),
+  qualifiedAt: timestamp("qualifiedAt", { withTimezone: true }),
+  rewardedAt: timestamp("rewardedAt", { withTimezone: true }),
   createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+});
+
+/** Singleton settings record for the Refer & Earn program. */
+export const referralSettings = pgTable("referralSettings", {
+  id: integer("id").primaryKey(),
+  isEnabled: boolean("isEnabled").default(true).notNull(),
+  referrerBonusAmount: numeric("referrerBonusAmount", { precision: 10, scale: 2 }).default("5").notNull(),
+  refereeBonusAmount: numeric("refereeBonusAmount", { precision: 10, scale: 2 }).default("5").notNull(),
+  updatedBy: bigint("updatedBy", { mode: "number" }).references(() => users.id, { onDelete: "set null" }),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
 });
 
 export const matchParticipants = pgTable("matchParticipants", {
@@ -237,6 +255,8 @@ export type Withdrawal = typeof withdrawals.$inferSelect;
 export type InsertWithdrawal = typeof withdrawals.$inferInsert;
 export type Referral = typeof referrals.$inferSelect;
 export type InsertReferral = typeof referrals.$inferInsert;
+export type ReferralSettings = typeof referralSettings.$inferSelect;
+export type InsertReferralSettings = typeof referralSettings.$inferInsert;
 export type AdminAuditLog = typeof adminAuditLog.$inferSelect;
 export type InsertAdminAuditLog = typeof adminAuditLog.$inferInsert;
 export type LeaderboardSettings = typeof leaderboardSettings.$inferSelect;
