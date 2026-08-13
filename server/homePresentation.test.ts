@@ -24,4 +24,15 @@ describe("Home welcome identity", () => {
     expect(homeSource).toContain("<WalletUTRReminder />");
     expect(homeSource).not.toContain("<UTRWarning />");
   });
+
+  it("uses compact two-column Match Category cards while retaining category actions", async () => {
+    const homeSource = await readFile(new URL("../client/src/pages/Home.tsx", import.meta.url), "utf8");
+    expect(homeSource).toContain('className="grid grid-cols-2 gap-3"');
+    expect(homeSource).toContain("min-h-[138px] flex-col p-3");
+    expect(homeSource).toContain("h-8 w-full border-primary/35");
+    expect(homeSource).toContain("categories.length % 2 === 1 && index === categories.length - 1");
+    expect(homeSource).toContain("col-span-2 mx-auto w-[calc(50%-0.375rem)]");
+    expect(homeSource).toContain("onClick={() => onSelect(category.id)}");
+    expect(homeSource).toContain("View Matches");
+  });
 });

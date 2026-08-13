@@ -75,9 +75,11 @@ function WalletUTRReminder() {
 function MatchCategoryCard({
   category,
   onSelect,
+  className = "",
 }: {
   category: { id: number; name: string; description: string | null };
   onSelect: (categoryId: number) => void;
+  className?: string;
 }) {
   const icons = {
     BR: <Zap className="h-8 w-8" />,
@@ -86,14 +88,11 @@ function MatchCategoryCard({
   };
 
   return (
-    <Card className="card-gaming cursor-pointer transition-all hover:shadow-lg hover:shadow-primary/50" onClick={() => onSelect(category.id)}>
-      <div className="flex flex-col items-center gap-3 text-center">
-        <div className="text-primary">{icons[category.name as keyof typeof icons]}</div>
-        <h3 className="font-bold text-foreground">{category.name}</h3>
-        <p className="text-xs text-muted-foreground">{category.description}</p>
-        <Button size="sm" variant="outline" className="w-full">
-          View Matches
-        </Button>
+    <Card className={`card-gaming group cursor-pointer overflow-hidden p-0 transition-all hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-lg hover:shadow-primary/25 ${className}`} onClick={() => onSelect(category.id)}>
+      <div className="flex min-h-[138px] flex-col p-3">
+        <div className="flex items-center gap-2"><div className="rounded-lg border border-primary/25 bg-primary/10 p-2 text-primary transition-colors group-hover:bg-primary/20">{icons[category.name as keyof typeof icons]}</div><h3 className="text-sm font-black text-foreground">{category.name}</h3></div>
+        <p className="mt-2 line-clamp-2 text-[11px] leading-relaxed text-muted-foreground">{category.description}</p>
+        <Button size="sm" variant="outline" className="mt-auto h-8 w-full border-primary/35 px-2 text-xs text-primary hover:bg-primary/10">View Matches</Button>
       </div>
     </Card>
   );
@@ -274,13 +273,14 @@ export default function Home() {
         <section className="mb-6" aria-labelledby="match-categories-heading">
           {!selectedCategory ? (
           <div>
-            <h2 id="match-categories-heading" className="mb-4 text-2xl font-bold">Select Match Category</h2>
-            <div className="grid gap-4 sm:grid-cols-3">
-              {categories.map((category) => (
+            <h2 id="match-categories-heading" className="mb-3 text-xl font-bold">Select Match Category</h2>
+            <div className="grid grid-cols-2 gap-3">
+              {categories.map((category, index) => (
                 <MatchCategoryCard
                   key={category.id}
                   category={category}
                   onSelect={setSelectedCategory}
+                  className={categories.length % 2 === 1 && index === categories.length - 1 ? "col-span-2 mx-auto w-[calc(50%-0.375rem)]" : ""}
                 />
               ))}
             </div>

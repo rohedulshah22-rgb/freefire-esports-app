@@ -393,3 +393,9 @@
 - [x] Replace the large Home UTR banner with a compact wallet-focused notice
 - [x] Move the Refer & Earn banner to the bottom of the default Home screen
 - [x] Add regression coverage for the revised Home content order and wallet notice intent
+
+## Phase 61: Compact Match Category Grid
+- [x] Convert Match Categories to a compact two-column grid on Android screens
+- [x] Reduce category-card padding while retaining icon, title, and View Matches action clarity
+- [x] Ensure all three categories fit within the initial Home viewport with a neat final-row placement
+- [x] Add regression coverage for compact grid structure and category interaction intent
