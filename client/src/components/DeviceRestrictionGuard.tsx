@@ -3,6 +3,7 @@ import { AlertCircle, Smartphone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getDeviceInfo, isDeviceAllowed, reportDeviceViolation } from "@/lib/deviceDetection";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { BRAND_NAME } from "@/lib/brand";
 
 /**
  * Device Restriction Guard Component
@@ -46,7 +47,7 @@ export function DeviceRestrictionGuard({ children }: { children: React.ReactNode
                 iOS devices are not supported on this platform.
               </p>
               <p className="mb-6 text-sm text-muted-foreground">
-                Please use an Android mobile phone to access Pro-Esports.
+                Please use an Android mobile phone to access {BRAND_NAME}.
               </p>
             </div>
           )}
@@ -57,7 +58,7 @@ export function DeviceRestrictionGuard({ children }: { children: React.ReactNode
                 Desktop browsers are not supported on this platform.
               </p>
               <p className="mb-6 text-sm text-muted-foreground">
-                Please use an Android mobile phone to access Pro-Esports.
+                Please use an Android mobile phone to access {BRAND_NAME}.
               </p>
             </div>
           )}
@@ -68,7 +69,7 @@ export function DeviceRestrictionGuard({ children }: { children: React.ReactNode
                 Tablets are not supported on this platform.
               </p>
               <p className="mb-6 text-sm text-muted-foreground">
-                Please use an Android mobile phone to access Pro-Esports.
+                Please use an Android mobile phone to access {BRAND_NAME}.
               </p>
             </div>
           )}
@@ -79,7 +80,7 @@ export function DeviceRestrictionGuard({ children }: { children: React.ReactNode
                 Emulators and virtual devices are not allowed.
               </p>
               <p className="mb-6 text-sm text-muted-foreground">
-                Please use a real Android mobile phone to access Pro-Esports.
+                Please use a real Android mobile phone to access {BRAND_NAME}.
               </p>
               <p className="mb-6 text-xs text-destructive font-semibold">
                 ⚠️ Violation detected. Your account may be flagged for review.

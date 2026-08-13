@@ -367,3 +367,10 @@
 - [x] Add accessible Referral Rules & Terms disclosures covering eligibility, fair play, fraud blocks, and Bonus Coin conditions
 - [x] Add a prominent Home Screen Refer & Earn shortcut that routes directly to the player referral experience
 - [x] Add regression coverage for player referral guidance, rules disclosures, and Home navigation intent
+
+## Phase 57: BooyahCraft Brand and Sharing Metadata
+- [x] Audit existing product names, page titles, brand logo references, and social metadata
+- [x] Create and publish a BooyahCraft logo asset for in-app and social sharing use
+- [x] Update player-facing app name and the official Ultimate Free Fire & Esports Tournament Platform tagline
+- [x] Update document, Open Graph, and referral-sharing metadata to use the full BooyahCraft social title and logo
+- [x] Add regression coverage for brand copy, metadata, referral-preview intent, and logo references

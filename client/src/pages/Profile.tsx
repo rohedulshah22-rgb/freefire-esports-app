@@ -2,6 +2,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
 import { ADMIN_PANEL_LOGIN_PATH, canOpenAdminPanel } from "@/lib/adminNavigation";
 import { getReferralDeviceToken } from "@/lib/referralDevice";
+import { BRAND_NAME, BRAND_SOCIAL_TITLE } from "@/lib/brand";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -111,7 +112,7 @@ export default function ProfilePage() {
   };
   const shareReferralLink = async () => {
     if (!referralShareLink) return;
-    if (navigator.share) { await navigator.share({ title: "Join Pro-Esports", text: "Join me in Free Fire tournaments and earn bonus Coins after your first match.", url: referralShareLink }); return; }
+    if (navigator.share) { await navigator.share({ title: BRAND_SOCIAL_TITLE, text: `Join me on ${BRAND_NAME}, the Ultimate Free Fire & Esports Tournament Platform. Complete your first valid match join and earn Bonus Coins.`, url: referralShareLink }); return; }
     await copyReferralLink();
   };
 
