@@ -345,3 +345,7 @@
 - [x] Build the Player Leaderboard page with podium cards, rank badges, filters, stats previews, and personal rank bar
 - [x] Add a Player App navigation path to the Leaderboard page
 - [x] Add deterministic coverage for ranking, period boundaries, owner-only management, and UI navigation intent
+
+## Phase 53: Admin Return-to-Player Navigation
+- [x] Add a prominent Admin Dashboard header action that returns to the Player App in the same tab
+- [x] Add regression coverage for the Admin-to-Player navigation route

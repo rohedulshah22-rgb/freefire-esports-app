@@ -21,6 +21,7 @@ import {
   Users,
   Trophy,
   LogOut,
+  Gamepad2,
   Plus,
   Minus,
   Search,
@@ -701,14 +702,24 @@ function AdminDashboardContent() {
             <h1 className="text-3xl font-bold text-accent">Admin Dashboard</h1>
             <p className="text-muted-foreground">Manage deposits, withdrawals, and match results</p>
           </div>
-          <Button
-            variant="outline"
-            className="flex items-center gap-2"
-            onClick={handleLogout}
-          >
-            <LogOut className="h-4 w-4" />
-            Logout
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              className="btn-neon flex items-center gap-2"
+              onClick={() => setLocation("/")}
+            >
+              <Gamepad2 className="h-4 w-4" />
+              Return to Player App
+            </Button>
+            <Button
+              variant="outline"
+              className="flex items-center gap-2"
+              onClick={handleLogout}
+            >
+              <LogOut className="h-4 w-4" />
+              Logout
+            </Button>
+          </div>
         </div>
       </div>
 
