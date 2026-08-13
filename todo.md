@@ -374,3 +374,10 @@
 - [x] Update player-facing app name and the official Ultimate Free Fire & Esports Tournament Platform tagline
 - [x] Update document, Open Graph, and referral-sharing metadata to use the full BooyahCraft social title and logo
 - [x] Add regression coverage for brand copy, metadata, referral-preview intent, and logo references
+
+## Phase 58: Compact Player Header
+- [x] Remove the official tagline from the Player App’s visible top-header interface
+- [x] Render a compact BooyahCraft logo-and-name row in the top-left header area
+- [x] Keep the player welcome message and signed-in status as the only header copy below the brand row
+- [x] Preserve the official tagline exclusively in HTML and Open Graph sharing metadata
+- [x] Add regression coverage for the compact header and metadata-only tagline boundary

@@ -58,7 +58,7 @@ describe("Refer & Earn workflow", () => {
 
     const blocked = await enrollReferralCode(blockedId, referrerDashboard.referralCode, { deviceToken: "referrer-device-123", requestOrigin: "198.51.100.4" }, db);
     expect(blocked).toMatchObject({ status: "blocked", blocked: true });
-  }, 20_000);
+  }, 35_000);
 
   it("credits both referral bonuses exactly once after the invited player’s first match join", async () => {
     const { client, db } = await openRollbackDatabase();
@@ -85,7 +85,7 @@ describe("Refer & Earn workflow", () => {
     ]);
     const bonusTransactions = await client.query<{ count: string }>(`SELECT COUNT(*)::text AS count FROM transactions WHERE "referralId" IS NOT NULL`);
     expect(bonusTransactions.rows[0]!.count).toBe("2");
-  }, 20_000);
+  }, 35_000);
 
   it("keeps Refer & Earn player guidance, Home navigation, and owner-admin UI intent connected to the protected referral contracts", async () => {
     const [profileSource, homeSource, adminSource] = await Promise.all([

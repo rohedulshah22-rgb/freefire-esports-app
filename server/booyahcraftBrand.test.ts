@@ -20,7 +20,10 @@ describe("BooyahCraft managed brand configuration", () => {
     expect(indexSource).toContain('property="og:image" content="https://freefireesports-x23zgzvt.manus.space/manus-storage/booyahcraft-logo_c5e2c04c.png"');
     expect(indexSource).toContain('name="twitter:image" content="https://freefireesports-x23zgzvt.manus.space/manus-storage/booyahcraft-logo_c5e2c04c.png"');
     expect(homeSource).toContain("BRAND_LOGO_URL");
-    expect(homeSource).toContain("BRAND_TAGLINE");
+    expect(homeSource).toContain("{BRAND_NAME}</span>");
+    expect(homeSource).toContain("Welcome{welcomeIdentity");
+    expect(homeSource).not.toContain("BRAND_TAGLINE");
+    expect(homeSource).not.toContain("Ultimate Free Fire & Esports Tournament Platform");
     expect(profileSource).toContain("title: BRAND_SOCIAL_TITLE");
     expect(deviceGuardSource).toContain("access {BRAND_NAME}");
   });

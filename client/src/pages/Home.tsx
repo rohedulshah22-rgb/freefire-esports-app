@@ -9,7 +9,7 @@ import { useState, useEffect } from "react";
 import { getLoginUrl } from "@/const";
 import { getWelcomeIdentity } from "@/lib/playerPresentation";
 import { getWalletActionPath } from "@/lib/walletNavigation";
-import { BRAND_LOGO_URL, BRAND_NAME, BRAND_TAGLINE } from "@/lib/brand";
+import { BRAND_LOGO_URL, BRAND_NAME } from "@/lib/brand";
 import { PlayerJoinForm } from "@/components/PlayerJoinForm";
 import { toast } from "sonner";
 
@@ -256,8 +256,7 @@ export default function Home() {
       <div className="min-h-screen bg-background flex flex-col items-center justify-center px-4">
         <div className="text-center">
           <img src={BRAND_LOGO_URL} alt="BooyahCraft logo" className="mx-auto mb-4 h-20 w-20 rounded-2xl border border-accent/40 bg-background object-cover shadow-[0_0_28px_rgba(255,184,0,0.18)]" />
-          <h1 className="mb-2 text-4xl font-bold text-accent">{BRAND_NAME}</h1>
-          <p className="mb-6 text-xl text-muted-foreground">{BRAND_TAGLINE}</p>
+          <h1 className="mb-6 text-4xl font-bold text-accent">{BRAND_NAME}</h1>
           <p className="mb-8 max-w-md text-sm text-muted-foreground">
             Join competitive matches, earn rewards, and compete with players worldwide
           </p>
@@ -272,16 +271,11 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-background pb-20">
       {/* Header */}
-      <div className="border-b border-primary/20 bg-gradient-gaming py-6 px-4">
-        <div className="mx-auto flex max-w-4xl items-center justify-between gap-3">
-          <div className="flex min-w-0 items-center gap-3">
-            <img src={BRAND_LOGO_URL} alt="BooyahCraft logo" className="h-11 w-11 shrink-0 rounded-xl border border-primary/40 bg-background object-cover" />
-            <div className="min-w-0">
-              <p className="truncate text-[10px] font-black uppercase tracking-[0.18em] text-primary">{BRAND_NAME}</p>
-              <h1 className="mb-1 truncate text-2xl font-bold text-accent sm:text-3xl">Welcome{welcomeIdentity ? `, ${welcomeIdentity}` : ""}</h1>
-              <p className="text-xs text-muted-foreground">{BRAND_TAGLINE}</p>
-              <p className="mt-0.5 truncate text-xs text-muted-foreground/80">{user?.email ? `Signed in as ${user.email}` : "Ready to compete?"}</p>
-            </div>
+      <div className="border-b border-primary/20 bg-gradient-gaming px-4 py-5">
+        <div className="mx-auto flex max-w-4xl items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2"><img src={BRAND_LOGO_URL} alt="BooyahCraft logo" className="h-8 w-8 shrink-0 rounded-lg border border-primary/40 bg-background object-cover" /><span className="text-lg font-black tracking-tight text-accent">{BRAND_NAME}</span></div>
+            <div className="mt-3 min-w-0"><h1 className="truncate text-2xl font-bold text-foreground sm:text-3xl">Welcome{welcomeIdentity ? `, ${welcomeIdentity}` : ""}</h1><p className="mt-0.5 truncate text-xs text-muted-foreground">{user?.email ? `Signed in as ${user.email}` : "Ready to compete?"}</p></div>
           </div>
           <div className="flex shrink-0 gap-2"><Button variant="outline" size="sm" className="border-primary/40 text-primary hover:bg-primary/10" onClick={() => { window.location.href = "/leaderboard"; }}><Medal className="mr-1.5 h-4 w-4" />Ranks</Button><Button variant="outline" size="sm" className="border-accent/40 text-accent hover:bg-accent/10" onClick={() => { window.location.href = "/profile"; }}><UserRound className="mr-1.5 h-4 w-4" />Profile</Button></div>
         </div>
