@@ -650,6 +650,10 @@ function AdminDashboardContent() {
   const [resultParticipantId, setResultParticipantId] = useState("");
   const [resultKillCount, setResultKillCount] = useState("");
   const [resultRank, setResultRank] = useState("");
+  const [participantMatchId, setParticipantMatchId] = useState("");
+  const selectedParticipantMatchId = Number(participantMatchId);
+  const canLoadParticipants = Number.isInteger(selectedParticipantMatchId) && selectedParticipantMatchId > 0;
+  const resultParticipantsQuery = trpc.matches.getParticipants.useQuery({ matchId: selectedParticipantMatchId }, { enabled: canLoadParticipants });
 
   // Fetch pending deposits
   const { data: pendingDeposits = [] } = trpc.deposits.getPending.useQuery();
@@ -970,6 +974,10 @@ function AdminDashboardContent() {
 
           {/* Match Results Tab */}
           <TabsContent value="results" className="mt-6">
+            <Card className="card-gaming mb-5">
+              <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><h2 className="text-lg font-bold">Match Participants</h2><p className="mt-1 text-sm text-muted-foreground">Load a match to use player avatars and participant IDs while submitting results.</p></div><Input type="number" value={participantMatchId} onChange={(event) => setParticipantMatchId(event.target.value)} placeholder="Match ID" className="input-gaming w-full sm:w-40" /></div>
+              {!canLoadParticipants ? <p className="rounded-lg border border-dashed border-muted-foreground/25 p-3 text-center text-sm text-muted-foreground">Enter a Match ID to view its joined players.</p> : resultParticipantsQuery.isLoading ? <p className="text-sm text-muted-foreground">Loading participants...</p> : resultParticipantsQuery.data?.length ? <div className="grid gap-2 sm:grid-cols-2">{resultParticipantsQuery.data.map((participant) => <button type="button" key={participant.id} onClick={() => setResultParticipantId(String(participant.id))} className="flex items-center gap-3 rounded-lg border border-muted-foreground/20 bg-muted/10 p-3 text-left transition-colors hover:border-primary/50 hover:bg-primary/5"><div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-primary/30 bg-primary/10 text-xs font-black text-primary">{participant.avatarUrl ? <img src={participant.avatarUrl} alt={`${participant.username} avatar`} className="h-full w-full object-cover" /> : participant.username.trim().split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase()}</div><div className="min-w-0 flex-1"><p className="truncate font-bold text-foreground">{participant.username}</p><p className="truncate text-xs text-muted-foreground">#{participant.id} · {participant.freeFireIGN}</p></div><Badge variant="outline" className="border-primary/30 text-primary">{participant.status}</Badge></button>)}</div> : <p className="rounded-lg border border-dashed border-muted-foreground/25 p-3 text-center text-sm text-muted-foreground">No joined players for this match.</p>}
+            </Card>
             <Card className="card-gaming">
               <h2 className="mb-4 text-lg font-bold">Enter Match Results</h2>
               <div className="space-y-4">

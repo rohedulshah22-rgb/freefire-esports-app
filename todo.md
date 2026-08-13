@@ -406,3 +406,9 @@
 - [x] Add tappable Profile avatar upload/edit interaction with safe image validation and preview
 - [x] Preserve editing and saving of the player’s Free Fire in-game UID through Edit Free Fire ID
 - [x] Add rollback-safe and UI-intent regression coverage for avatar ownership and numeric UID generation
+
+## Phase 63: Cross-App Player Avatar Propagation
+- [x] Include saved avatar URLs in leaderboard, tournament-ranking, and participant-list data contracts
+- [x] Render custom avatars with initials fallbacks in Player Leaderboard and ranking previews
+- [x] Render custom avatars with initials fallbacks in player-visible and Admin participant lists
+- [x] Add regression coverage for avatar propagation, protected source ownership, and initials fallbacks

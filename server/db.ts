@@ -368,6 +368,7 @@ export async function getLeaderboard(
     userId: users.id,
     username: sql<string>`COALESCE(${users.freeFireName}, ${users.name}, 'Free Fire Player')`,
     freeFireUid: users.freeFireUid,
+    avatarUrl: users.avatarUrl,
     totalKills: sql<number>`COALESCE(SUM(COALESCE(${matchParticipants.killCount}, 0)), 0)::int`,
     totalEarnings: sql<string>`COALESCE(SUM(COALESCE(${matchParticipants.prizeAwarded}, 0)), 0)::text`,
     matchesPlayed: sql<number>`COUNT(${matchParticipants.id})::int`,
@@ -375,7 +376,7 @@ export async function getLeaderboard(
     .from(users)
     .leftJoin(matchParticipants, participantCondition)
     .where(eq(users.isBanned, false))
-    .groupBy(users.id, users.freeFireName, users.name, users.freeFireUid);
+    .groupBy(users.id, users.freeFireName, users.name, users.freeFireUid, users.avatarUrl);
 
   const entries = rows.map((row) => ({
     ...row,
@@ -773,9 +774,25 @@ export async function joinMatch(
   });
 }
 
-export async function getMatchParticipants(matchId: number) {
-  const db = await requireDb();
-  return db.select().from(matchParticipants).where(eq(matchParticipants.matchId, matchId));
+export async function getMatchParticipants(matchId: number, databaseOverride?: WorkflowDatabase) {
+  const db = databaseOverride ?? await requireDb();
+  return db.select({
+    id: matchParticipants.id,
+    matchId: matchParticipants.matchId,
+    userId: matchParticipants.userId,
+    freeFireIGN: matchParticipants.freeFireIGN,
+    freeFireUID: matchParticipants.freeFireUID,
+    status: matchParticipants.status,
+    killCount: matchParticipants.killCount,
+    rank: matchParticipants.rank,
+    prizeAwarded: matchParticipants.prizeAwarded,
+    joinedAt: matchParticipants.createdAt,
+    username: sql<string>`COALESCE(${users.freeFireName}, ${users.name}, ${matchParticipants.freeFireIGN}, 'Free Fire Player')`,
+    avatarUrl: users.avatarUrl,
+  }).from(matchParticipants)
+    .innerJoin(users, eq(matchParticipants.userId, users.id))
+    .where(eq(matchParticipants.matchId, matchId))
+    .orderBy(matchParticipants.createdAt);
 }
 
 export async function getPlayerMatches(userId: number) {

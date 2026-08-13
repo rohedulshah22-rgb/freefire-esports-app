@@ -19,6 +19,10 @@ import { useLocation, useRoute } from "wouter";
 import { PlayerJoinForm } from "@/components/PlayerJoinForm";
 import { toast } from "sonner";
 
+function participantInitials(name: string) {
+  return name.trim().split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase() || "FF";
+}
+
 /**
  * Match detail and joining page
  */
@@ -38,6 +42,10 @@ export default function MatchDetailPage() {
   const roomCredentialsQuery = trpc.matches.getRoomCredentials.useQuery(
     { matchId },
     { enabled: Boolean(user) && Boolean(matchData) },
+  );
+  const participantsQuery = trpc.matches.getParticipants.useQuery(
+    { matchId },
+    { enabled: Number.isSafeInteger(matchId) && matchId > 0 },
   );
   const match = matchData ? {
     id: matchData.match.id,
@@ -64,6 +72,7 @@ export default function MatchDetailPage() {
       setIsJoining(false);
       setJoinFormOpen(false);
       utils.matches.getById.invalidate({ matchId });
+      utils.matches.getParticipants.invalidate({ matchId });
       utils.matches.getJoinedMatchIds.invalidate();
       utils.matches.getRoomCredentials.invalidate({ matchId });
       utils.wallet.getBalance.invalidate();
@@ -280,6 +289,7 @@ export default function MatchDetailPage() {
                   </Badge>
                 </div>
               </div>
+              <div className="mt-5 border-t border-muted-foreground/15 pt-4"><div className="mb-3 flex items-center justify-between"><h3 className="text-sm font-bold text-foreground">Participant List</h3><Badge variant="outline" className="border-primary/30 text-primary">{participantsQuery.data?.length ?? 0} joined</Badge></div>{participantsQuery.isLoading ? <p className="text-sm text-muted-foreground">Loading players...</p> : participantsQuery.data?.length ? <div className="max-h-56 space-y-2 overflow-y-auto pr-1">{participantsQuery.data.map((participant) => <div key={participant.id} className="flex items-center gap-3 rounded-lg border border-muted-foreground/15 bg-muted/10 px-3 py-2"><div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-primary/30 bg-primary/10 text-xs font-black text-primary">{participant.avatarUrl ? <img src={participant.avatarUrl} alt={`${participant.username} avatar`} className="h-full w-full object-cover" /> : participantInitials(participant.username)}</div><div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold text-foreground">{participant.username}</p><p className="truncate text-xs text-muted-foreground">IGN · {participant.freeFireIGN}</p></div><Badge variant="outline" className="border-primary/30 text-[10px] text-primary">{participant.status}</Badge></div>)}</div> : <p className="rounded-lg border border-dashed border-muted-foreground/25 p-3 text-center text-sm text-muted-foreground">Players who join this match will appear here.</p>}</div>
             </Card>
 
             {/* Room Credentials */}

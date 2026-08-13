@@ -250,6 +250,12 @@ export const appRouter = router({
         return await getPublicMatchById(input.matchId);
       }),
 
+    getParticipants: publicProcedure
+      .input(z.object({ matchId: z.number().int().positive() }))
+      .query(async ({ input }) => {
+        return getMatchParticipants(input.matchId);
+      }),
+
     getRoomCredentials: protectedProcedure
       .input(z.object({ matchId: z.number() }))
       .query(async ({ ctx, input }) => {
