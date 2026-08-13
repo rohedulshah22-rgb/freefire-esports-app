@@ -13,6 +13,14 @@ describe("Withdrawal player experience", () => {
     expect(source).toContain("Withdrawal History");
     expect(source).toContain("formatPayoutMethod(withdrawal.payoutMethod)");
     expect(source).toContain("withdrawalStatusStyle[withdrawal.status]");
+    expect(source).toContain('Accordion type="multiple" className="space-y-2"');
+    expect(source).toContain("value={`withdrawal-${withdrawal.id}`}");
+    expect(source).toContain("Payout method");
+    expect(source).toContain("Last update");
+    expect(source.indexOf("Withdrawal History")).toBeLessThan(source.indexOf("Frequently Asked Questions"));
+    expect(source).toContain('Accordion type="single" collapsible');
+    expect(source).toContain('value="winning-balance"');
+    expect(source).toContain('value="processing-time"');
   });
 
   it("uses a protected current-user history procedure rather than a caller-provided user ID", async () => {

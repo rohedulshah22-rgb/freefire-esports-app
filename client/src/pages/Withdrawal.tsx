@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { AlertCircle, ArrowUp, Smartphone, Gift, ArrowLeft, Clock3, History, Trophy } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { getPlayerDashboardPath } from "@/lib/walletNavigation";
@@ -271,41 +272,24 @@ export default function WithdrawalPage() {
           </Button>
         </Card>
 
+        <Card className="card-gaming mt-8">
+          <div className="mb-4 flex items-center justify-between gap-3"><div className="flex items-center gap-2"><History className="h-5 w-5 text-primary" /><div><h2 className="font-bold text-foreground">Withdrawal History</h2><p className="text-xs text-muted-foreground">Tap a request to view payout method, status, and processing details.</p></div></div><Badge variant="outline" className="border-primary/30 text-primary">{withdrawalHistoryQuery.data?.length ?? 0} requests</Badge></div>
+          {withdrawalHistoryQuery.isLoading ? <p className="py-4 text-center text-sm text-muted-foreground">Loading withdrawal history...</p> : withdrawalHistoryQuery.data?.length ? <Accordion type="multiple" className="space-y-2">{withdrawalHistoryQuery.data.map((withdrawal) => <AccordionItem key={withdrawal.id} value={`withdrawal-${withdrawal.id}`} className="rounded-xl border border-muted-foreground/15 bg-muted/10 px-3"><AccordionTrigger className="py-3 no-underline hover:no-underline"><div className="min-w-0"><p className="font-bold text-foreground">₹{Number(withdrawal.amount).toFixed(2)} · {formatPayoutMethod(withdrawal.payoutMethod)}</p><p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground"><Clock3 className="h-3.5 w-3.5" />{new Date(withdrawal.createdAt).toLocaleString()}</p></div><Badge variant="outline" className={`ml-auto mr-2 capitalize ${withdrawalStatusStyle[withdrawal.status] ?? "border-muted-foreground/30 text-muted-foreground"}`}>{withdrawal.status}</Badge></AccordionTrigger><AccordionContent className="pb-3"><div className="grid grid-cols-2 gap-2 rounded-lg border border-muted-foreground/15 bg-background/35 p-3 text-xs"><div><p className="text-muted-foreground">Payout method</p><p className="mt-1 font-semibold text-foreground">{formatPayoutMethod(withdrawal.payoutMethod)}</p></div><div><p className="text-muted-foreground">Last update</p><p className="mt-1 font-semibold text-foreground">{new Date(withdrawal.updatedAt).toLocaleString()}</p></div></div>{withdrawal.status === "rejected" && withdrawal.rejectionReason ? <p className="mt-2 rounded-lg bg-destructive/10 px-2 py-1 text-xs text-destructive">Reason: {withdrawal.rejectionReason}</p> : <p className="mt-2 text-xs text-muted-foreground">Payouts are processed within 24 hours after review.</p>}</AccordionContent></AccordionItem>)}</Accordion> : <div className="rounded-xl border border-dashed border-muted-foreground/25 p-5 text-center"><History className="mx-auto mb-2 h-6 w-6 text-muted-foreground" /><p className="font-semibold text-foreground">No withdrawal requests yet</p><p className="mt-1 text-sm text-muted-foreground">Your UPI and Redeem Code payout requests will appear here.</p></div>}
+        </Card>
+
         {/* FAQ Section */}
         <div className="mt-8">
           <h2 className="mb-4 text-lg font-bold">Frequently Asked Questions</h2>
-          <div className="space-y-3">
-            <Card className="card-gaming p-4">
-              <h3 className="font-semibold text-foreground mb-2">Can I withdraw Deposit Balance?</h3>
-              <p className="text-sm text-muted-foreground">
-                No, only Winning Balance (from match prizes and kill rewards) can be withdrawn. Deposit Balance is for joining matches.
-              </p>
-            </Card>
-            <Card className="card-gaming p-4">
-              <h3 className="font-semibold text-foreground mb-2">How long does withdrawal take?</h3>
-              <p className="text-sm text-muted-foreground">
-                After admin approval, UPI transfers are instant. Google Play codes are sent within 24 hours.
-              </p>
-            </Card>
-            <Card className="card-gaming p-4">
-              <h3 className="font-semibold text-foreground mb-2">What if my UPI ID is wrong?</h3>
-              <p className="text-sm text-muted-foreground">
-                Your withdrawal will be rejected. You can resubmit with the correct UPI ID or contact support.
-              </p>
-            </Card>
-            <Card className="card-gaming p-4">
-              <h3 className="font-semibold text-foreground mb-2">Is there a withdrawal fee?</h3>
-              <p className="text-sm text-muted-foreground">
-                No, all withdrawals are free. You receive 100% of the requested amount.
-              </p>
-            </Card>
-          </div>
+          <Card className="card-gaming px-4">
+            <Accordion type="single" collapsible>
+              <AccordionItem value="winning-balance"><AccordionTrigger>Can I withdraw Deposit Balance?</AccordionTrigger><AccordionContent className="text-muted-foreground">No. Only Winning Balance from match prizes and kill rewards can be withdrawn. Deposit and Bonus balances are reserved for joining matches.</AccordionContent></AccordionItem>
+              <AccordionItem value="processing-time"><AccordionTrigger>How long does withdrawal take?</AccordionTrigger><AccordionContent className="text-muted-foreground">Payouts are processed within 24 hours after review. Your request status updates in Withdrawal History.</AccordionContent></AccordionItem>
+              <AccordionItem value="incorrect-upi"><AccordionTrigger>What if my UPI ID is wrong?</AccordionTrigger><AccordionContent className="text-muted-foreground">The request may be rejected. Update your payment information and submit a new request, or contact support for help.</AccordionContent></AccordionItem>
+              <AccordionItem value="fees"><AccordionTrigger>Is there a withdrawal fee?</AccordionTrigger><AccordionContent className="text-muted-foreground">No. Approved payouts send the full requested amount with no platform withdrawal fee.</AccordionContent></AccordionItem>
+            </Accordion>
+          </Card>
         </div>
 
-        <Card className="card-gaming mt-8">
-          <div className="mb-4 flex items-center justify-between gap-3"><div className="flex items-center gap-2"><History className="h-5 w-5 text-primary" /><div><h2 className="font-bold text-foreground">Withdrawal History</h2><p className="text-xs text-muted-foreground">Track your UPI and Redeem Code payout requests.</p></div></div><Badge variant="outline" className="border-primary/30 text-primary">{withdrawalHistoryQuery.data?.length ?? 0} requests</Badge></div>
-          {withdrawalHistoryQuery.isLoading ? <p className="py-4 text-center text-sm text-muted-foreground">Loading withdrawal history...</p> : withdrawalHistoryQuery.data?.length ? <div className="space-y-2">{withdrawalHistoryQuery.data.map((withdrawal) => <div key={withdrawal.id} className="rounded-xl border border-muted-foreground/15 bg-muted/10 p-3"><div className="flex items-start justify-between gap-3"><div><p className="font-bold text-foreground">₹{Number(withdrawal.amount).toFixed(2)} · {formatPayoutMethod(withdrawal.payoutMethod)}</p><p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground"><Clock3 className="h-3.5 w-3.5" />{new Date(withdrawal.createdAt).toLocaleString()}</p></div><Badge variant="outline" className={`capitalize ${withdrawalStatusStyle[withdrawal.status] ?? "border-muted-foreground/30 text-muted-foreground"}`}>{withdrawal.status}</Badge></div>{withdrawal.status === "rejected" && withdrawal.rejectionReason ? <p className="mt-2 rounded-lg bg-destructive/10 px-2 py-1 text-xs text-destructive">Reason: {withdrawal.rejectionReason}</p> : null}</div>)}</div> : <div className="rounded-xl border border-dashed border-muted-foreground/25 p-5 text-center"><History className="mx-auto mb-2 h-6 w-6 text-muted-foreground" /><p className="font-semibold text-foreground">No withdrawal requests yet</p><p className="mt-1 text-sm text-muted-foreground">Your UPI and Redeem Code payout requests will appear here.</p></div>}
-        </Card>
       </div>
 
       {/* Floating WhatsApp Button */}

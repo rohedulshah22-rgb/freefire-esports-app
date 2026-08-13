@@ -419,3 +419,9 @@
 - [x] Add a protected player withdrawal-history contract without exposing other players’ requests
 - [x] Render UPI and Redeem Code withdrawal history with Pending, Approved, Rejected, and Completed state badges
 - [x] Add regression coverage for withdrawal eligibility, user-scoped history, and player-facing status intent
+
+## Phase 65: Compact Withdrawal History and FAQ Layout
+- [x] Place Withdrawal History directly after the Request Withdrawal action and before FAQs
+- [x] Make payout history records expandable with method, status, timestamp, and rejection-detail disclosure
+- [x] Convert Withdrawal FAQs into accessible collapsible accordion items
+- [x] Add regression coverage for content order and interactive disclosure intent
