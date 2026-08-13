@@ -412,3 +412,10 @@
 - [x] Render custom avatars with initials fallbacks in Player Leaderboard and ranking previews
 - [x] Render custom avatars with initials fallbacks in player-visible and Admin participant lists
 - [x] Add regression coverage for avatar propagation, protected source ownership, and initials fallbacks
+
+## Phase 64: Withdrawal Experience Refinement
+- [x] Surface a prominent 50-Coin minimum withdrawal notice and 24-hour processing expectation
+- [x] Clearly show that only Winning Balance can be withdrawn and keep request validation aligned
+- [x] Add a protected player withdrawal-history contract without exposing other players’ requests
+- [x] Render UPI and Redeem Code withdrawal history with Pending, Approved, Rejected, and Completed state badges
+- [x] Add regression coverage for withdrawal eligibility, user-scoped history, and player-facing status intent

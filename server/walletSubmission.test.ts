@@ -90,15 +90,15 @@ describe("wallet submission routers", () => {
     });
   }, 20_000);
 
-  it("queues a withdrawal through wallet.withdraw, reserves winning balance, and rejects insufficient funds", async () => {
+  it("queues a 50-Coin Winning Balance withdrawal, exposes only the player history, and rejects invalid amounts", async () => {
     await withRollbackTransaction(async ({ client, ctx, userId }) => {
       await client.query(
-        `INSERT INTO "wallets" ("userId", "depositBalance", "winningBalance", "bonusBalance") VALUES ($1, 10, 75, 5)`,
+        `INSERT INTO "wallets" ("userId", "depositBalance", "winningBalance", "bonusBalance") VALUES ($1, 10, 100, 5)`,
         [userId],
       );
       const caller = appRouter.createCaller(ctx);
       const result = await caller.wallet.withdraw({
-        amount: "20",
+        amount: "50",
         payoutMethod: "upi",
         payoutDetails: "wallet-router@upi",
       });
@@ -121,14 +121,26 @@ describe("wallet submission routers", () => {
         WHERE w."userId" = $1 AND wd."id" = $2
       `, [userId, result.withdrawalId]);
       expect(state.rows).toEqual([{
-        winningBalance: "55.00",
-        amount: "20.00",
+        winningBalance: "50.00",
+        amount: "50.00",
         payoutMethod: "upi",
         payoutDetails: "wallet-router@upi",
         status: "pending",
-        transactionAmount: "-20.00",
+        transactionAmount: "-50.00",
         balanceType: "winning",
       }]);
+
+      const otherUser = await client.query<{ id: string }>(`INSERT INTO "users" ("openId", name, role) VALUES ($1, 'Other Withdrawal Player', 'user') RETURNING id`, [`wallet-router-other-${userId}`]);
+      await client.query(`INSERT INTO "withdrawals" ("userId", "amount", "payoutMethod", "payoutDetails", status) VALUES ($1, 50, 'google_play', 'other@example.com', 'approved')`, [Number(otherUser.rows[0]!.id)]);
+      const history = await caller.wallet.getWithdrawalHistory();
+      expect(history).toHaveLength(1);
+      expect(history[0]).toMatchObject({ id: result.withdrawalId, amount: "50.00", payoutMethod: "upi", status: "pending" });
+
+      await expect(caller.wallet.withdraw({
+        amount: "20",
+        payoutMethod: "upi",
+        payoutDetails: "wallet-router@upi",
+      })).rejects.toMatchObject({ code: "BAD_REQUEST", message: "Minimum withdrawal is 50 Coins" });
 
       await expect(caller.wallet.withdraw({
         amount: "60",

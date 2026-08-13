@@ -38,6 +38,8 @@ import {
   getPublicMatchById,
   getRoomCredentialsForJoinedPlayer,
   requestWithdrawal,
+  MINIMUM_WITHDRAWAL_COINS,
+  getUserWithdrawals,
   processWithdrawalRequest,
   getPlayerProfile,
   updatePlayerProfile,
@@ -291,6 +293,10 @@ export const appRouter = router({
       return await getUserTransactions(userId);
     }),
 
+    getWithdrawalHistory: protectedProcedure.query(async ({ ctx }) => {
+      return getUserWithdrawals(ctx.user.id, ctx.databaseOverride);
+    }),
+
     addMoney: protectedProcedure
       .input(z.object({
         amount: z.string().regex(/^\d+(?:\.\d{1,2})?$/, "Enter a valid amount"),
@@ -318,8 +324,8 @@ export const appRouter = router({
       }))
       .mutation(async ({ ctx, input }) => {
         const amount = Number(input.amount);
-        if (amount < 20) {
-          throw new TRPCError({ code: "BAD_REQUEST", message: "Minimum withdrawal is 20 Coins" });
+        if (amount < MINIMUM_WITHDRAWAL_COINS) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: `Minimum withdrawal is ${MINIMUM_WITHDRAWAL_COINS} Coins` });
         }
 
         try {

@@ -192,7 +192,7 @@ describe("Neon PostgreSQL write contracts", () => {
       const profileReadback = await getPlayerProfile(joinedUserId, db);
       expect(profileReadback.freeFireUid).toBe("987654321012");
 
-      const withdrawal = await requestWithdrawal(joinedUserId, 20, "upi", "workflow@upi", db);
+      const withdrawal = await requestWithdrawal(joinedUserId, 50, "upi", "workflow@upi", db);
       await processWithdrawalRequest(withdrawal.withdrawalId, "rejected", "Rollback test", db);
       const state = await client.query<{ depositBalance: string; bonusBalance: string; winningBalance: string; status: string; participants: string }>(`
         SELECT w."depositBalance", w."bonusBalance", w."winningBalance", wd."status",

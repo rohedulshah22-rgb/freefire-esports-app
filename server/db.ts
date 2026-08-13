@@ -40,6 +40,8 @@ function getNumericPlayerUid(userId: number) {
   return String(8_000_000_000 + userId);
 }
 
+export const MINIMUM_WITHDRAWAL_COINS = 50;
+
 export async function getDb() {
   const connectionString = process.env.NEON_DATABASE_URL;
   if (!connectionString) return null;
@@ -1022,6 +1024,9 @@ export async function requestWithdrawal(
   databaseOverride?: WorkflowDatabase,
 ) {
   return withinWorkflowTransaction(databaseOverride, async (tx) => {
+    if (!Number.isFinite(amount) || amount < MINIMUM_WITHDRAWAL_COINS) {
+      throw new Error(`Minimum withdrawal is ${MINIMUM_WITHDRAWAL_COINS} Coins`);
+    }
     await tx.insert(wallets).values({ userId, depositBalance: "0", winningBalance: "0", bonusBalance: "0" })
       .onConflictDoNothing({ target: wallets.userId });
     const walletRows = await tx.select().from(wallets).where(eq(wallets.userId, userId)).limit(1).for("update");
@@ -1054,6 +1059,19 @@ export async function requestWithdrawal(
 export async function getPendingWithdrawals() {
   const db = await requireDb();
   return db.select().from(withdrawals).where(eq(withdrawals.status, "pending")).orderBy(withdrawals.createdAt);
+}
+
+export async function getUserWithdrawals(userId: number, databaseOverride?: WorkflowDatabase) {
+  const db = databaseOverride ?? await requireDb();
+  return db.select({
+    id: withdrawals.id,
+    amount: withdrawals.amount,
+    payoutMethod: withdrawals.payoutMethod,
+    status: withdrawals.status,
+    rejectionReason: withdrawals.rejectionReason,
+    createdAt: withdrawals.createdAt,
+    updatedAt: withdrawals.updatedAt,
+  }).from(withdrawals).where(eq(withdrawals.userId, userId)).orderBy(desc(withdrawals.createdAt));
 }
 
 export async function updateWithdrawalStatus(depositId: number, status: "pending" | "approved" | "rejected" | "completed", rejectionReason?: string) {

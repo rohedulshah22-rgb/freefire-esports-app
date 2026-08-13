@@ -4,10 +4,24 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { AlertCircle, ArrowUp, Smartphone, Gift, ArrowLeft } from "lucide-react";
+import { AlertCircle, ArrowUp, Smartphone, Gift, ArrowLeft, Clock3, History, Trophy } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { getPlayerDashboardPath } from "@/lib/walletNavigation";
 import { useLocation } from "wouter";
+import { toast } from "sonner";
+
+const MINIMUM_WITHDRAWAL_COINS = 50;
+
+const withdrawalStatusStyle: Record<string, string> = {
+  pending: "border-primary/40 bg-primary/10 text-primary",
+  approved: "border-accent/40 bg-accent/10 text-accent",
+  rejected: "border-destructive/40 bg-destructive/10 text-destructive",
+  completed: "border-green-400/40 bg-green-400/10 text-green-300",
+};
+
+function formatPayoutMethod(method: "upi" | "google_play") {
+  return method === "upi" ? "UPI" : "Redeem Code";
+}
 
 /**
  * Payout method selection component
@@ -68,46 +82,50 @@ export default function WithdrawalPage() {
   const [amount, setAmount] = useState("");
   const [payoutMethod, setPayoutMethod] = useState<"upi" | "google_play">("upi");
   const [payoutDetails, setPayoutDetails] = useState("");
+  const utils = trpc.useUtils();
 
   // Fetch wallet balance
   const { data: wallet } = trpc.wallet.getBalance.useQuery();
+  const withdrawalHistoryQuery = trpc.wallet.getWithdrawalHistory.useQuery();
 
   // Withdraw mutation
   const withdrawMutation = trpc.wallet.withdraw.useMutation({
     onSuccess: () => {
-      alert("Withdrawal request submitted! You will receive your funds within 24-48 hours.");
+      toast.success("Withdrawal request submitted. Payouts are processed within 24 hours.");
       setAmount("");
       setPayoutDetails("");
+      utils.wallet.getBalance.invalidate();
+      utils.wallet.getWithdrawalHistory.invalidate();
     },
     onError: (error) => {
-      alert(`Error: ${error.message}`);
+      toast.error(error.message || "Unable to submit your withdrawal request.");
     },
   });
 
   const handleSubmit = () => {
     if (!amount || !payoutDetails) {
-      alert("Please fill in all fields");
+      toast.error("Please fill in all fields.");
       return;
     }
 
     const numAmount = parseFloat(amount);
-    if (numAmount < 20) {
-      alert("Minimum withdrawal is ₹20");
+    if (!Number.isFinite(numAmount) || numAmount < MINIMUM_WITHDRAWAL_COINS) {
+      toast.error(`Minimum withdrawal is ${MINIMUM_WITHDRAWAL_COINS} Coins / ₹${MINIMUM_WITHDRAWAL_COINS}.`);
       return;
     }
 
     if (!wallet || numAmount > parseFloat(wallet.winningBalance)) {
-      alert("Insufficient winning balance");
+      toast.error("Insufficient Winning Balance.");
       return;
     }
 
     if (payoutMethod === "upi" && !payoutDetails.includes("@")) {
-      alert("Please enter a valid UPI ID (e.g., yourname@upi)");
+      toast.error("Please enter a valid UPI ID (e.g., yourname@upi).");
       return;
     }
 
     if (payoutMethod === "google_play" && !payoutDetails.includes("@")) {
-      alert("Please enter a valid email address");
+      toast.error("Please enter a valid email address.");
       return;
     }
 
@@ -141,12 +159,16 @@ export default function WithdrawalPage() {
               Dashboard
             </Button>
           </div>
-          <p className="text-muted-foreground">Cash out your winning balance</p>
+          <p className="text-muted-foreground">Cash out your Winning Balance only</p>
         </div>
       </div>
 
       {/* Main Content */}
       <div className="mx-auto max-w-4xl px-4 py-6">
+        <Card className="card-gaming mb-6 border-accent/45 bg-gradient-to-r from-accent/10 via-primary/5 to-transparent">
+          <div className="flex items-start gap-3"><div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-accent/15 text-accent"><Trophy className="h-5 w-5" /></div><div><p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">Minimum Withdrawal Limit</p><h2 className="mt-1 text-2xl font-black text-accent">50 Coins / ₹50</h2><p className="mt-1 text-sm text-muted-foreground">Only your Winning Balance is eligible. Payouts are processed within 24 hours after review.</p></div></div>
+        </Card>
+
         {/* Withdrawal Rules */}
         <Card className="card-gaming mb-6">
           <h2 className="mb-4 font-bold text-foreground">Withdrawal Rules</h2>
@@ -160,13 +182,13 @@ export default function WithdrawalPage() {
             <div className="flex items-start gap-3">
               <Badge className="mt-1 bg-primary/20 text-primary">2</Badge>
               <p className="text-muted-foreground">
-                <strong>Minimum withdrawal:</strong> ₹20
+                <strong>Minimum withdrawal:</strong> 50 Coins / ₹50
               </p>
             </div>
             <div className="flex items-start gap-3">
               <Badge className="mt-1 bg-primary/20 text-primary">3</Badge>
               <p className="text-muted-foreground">
-                <strong>Processing time:</strong> 24-48 hours after approval
+                <strong>Processing time:</strong> Payouts processed within 24 hours after review
               </p>
             </div>
             <div className="flex items-start gap-3">
@@ -179,22 +201,7 @@ export default function WithdrawalPage() {
         </Card>
 
         {/* Balance Display */}
-        {wallet && (
-          <Card className="card-gaming mb-6">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="rounded-lg bg-accent/10 p-4 text-center">
-                <p className="text-xs text-muted-foreground mb-2">Available to Withdraw</p>
-                <p className="text-3xl font-bold text-accent">{wallet.winningBalance}</p>
-                <p className="text-xs text-muted-foreground mt-2">Winning Balance</p>
-              </div>
-              <div className="rounded-lg bg-primary/10 p-4 text-center">
-                <p className="text-xs text-muted-foreground mb-2">Not Withdrawable</p>
-                <p className="text-2xl font-bold text-primary">{wallet.depositBalance}</p>
-                <p className="text-xs text-muted-foreground mt-2">Deposit Balance</p>
-              </div>
-            </div>
-          </Card>
-        )}
+        {wallet && <Card className="card-gaming mb-6"><div className="flex items-center justify-between gap-4 rounded-xl bg-accent/10 p-4"><div><p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Available to Withdraw</p><p className="mt-1 text-3xl font-black text-accent">{wallet.winningBalance} <span className="text-base">Coins</span></p><p className="mt-1 text-xs text-muted-foreground">Winning Balance only · Deposit and Bonus Coins cannot be withdrawn.</p></div><Badge className="border-accent/35 bg-accent/10 text-accent">Winning Only</Badge></div></Card>}
 
         {/* Withdrawal Form */}
         <Card className="card-gaming">
@@ -212,7 +219,7 @@ export default function WithdrawalPage() {
             />
             <div className="mt-2 flex items-center justify-between">
               <p className="text-xs text-muted-foreground">
-                Minimum: ₹20 | Maximum: ₹{maxWithdrawable.toFixed(2)}
+                Minimum: ₹{MINIMUM_WITHDRAWAL_COINS} | Winning Balance maximum: ₹{maxWithdrawable.toFixed(2)}
               </p>
               <button
                 onClick={() => setAmount(maxWithdrawable.toFixed(2))}
@@ -249,7 +256,7 @@ export default function WithdrawalPage() {
           <div className="mb-6 rounded-lg border-l-4 border-accent bg-accent/10 p-4">
             <p className="text-sm font-semibold text-accent mb-1">⚠️ Important</p>
             <p className="text-xs text-muted-foreground">
-              Your withdrawal request will be pending until admin approval. Ensure you provide correct payment details. Incorrect details may result in rejection.
+              Your request appears in Withdrawal History immediately. Ensure you provide correct payment details; invalid information may lead to rejection. Payouts are processed within 24 hours after review.
             </p>
           </div>
 
@@ -294,6 +301,11 @@ export default function WithdrawalPage() {
             </Card>
           </div>
         </div>
+
+        <Card className="card-gaming mt-8">
+          <div className="mb-4 flex items-center justify-between gap-3"><div className="flex items-center gap-2"><History className="h-5 w-5 text-primary" /><div><h2 className="font-bold text-foreground">Withdrawal History</h2><p className="text-xs text-muted-foreground">Track your UPI and Redeem Code payout requests.</p></div></div><Badge variant="outline" className="border-primary/30 text-primary">{withdrawalHistoryQuery.data?.length ?? 0} requests</Badge></div>
+          {withdrawalHistoryQuery.isLoading ? <p className="py-4 text-center text-sm text-muted-foreground">Loading withdrawal history...</p> : withdrawalHistoryQuery.data?.length ? <div className="space-y-2">{withdrawalHistoryQuery.data.map((withdrawal) => <div key={withdrawal.id} className="rounded-xl border border-muted-foreground/15 bg-muted/10 p-3"><div className="flex items-start justify-between gap-3"><div><p className="font-bold text-foreground">₹{Number(withdrawal.amount).toFixed(2)} · {formatPayoutMethod(withdrawal.payoutMethod)}</p><p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground"><Clock3 className="h-3.5 w-3.5" />{new Date(withdrawal.createdAt).toLocaleString()}</p></div><Badge variant="outline" className={`capitalize ${withdrawalStatusStyle[withdrawal.status] ?? "border-muted-foreground/30 text-muted-foreground"}`}>{withdrawal.status}</Badge></div>{withdrawal.status === "rejected" && withdrawal.rejectionReason ? <p className="mt-2 rounded-lg bg-destructive/10 px-2 py-1 text-xs text-destructive">Reason: {withdrawal.rejectionReason}</p> : null}</div>)}</div> : <div className="rounded-xl border border-dashed border-muted-foreground/25 p-5 text-center"><History className="mx-auto mb-2 h-6 w-6 text-muted-foreground" /><p className="font-semibold text-foreground">No withdrawal requests yet</p><p className="mt-1 text-sm text-muted-foreground">Your UPI and Redeem Code payout requests will appear here.</p></div>}
+        </Card>
       </div>
 
       {/* Floating WhatsApp Button */}
