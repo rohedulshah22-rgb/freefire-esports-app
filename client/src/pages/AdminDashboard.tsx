@@ -461,7 +461,12 @@ function AdminLogin({
 }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
+  const [error, setError] = useState(() => {
+    const authError = new URLSearchParams(window.location.search).get("authError");
+    if (authError === "owner-account-required") return "Please select rosidulshah4@gmail.com to access the Admin Panel.";
+    if (authError === "callback-failed") return "Owner sign-in could not be completed. Please try again.";
+    return "";
+  });
   const verifyCredentials = trpc.admin.verifyCredentials.useMutation({
     onSuccess: () => {
       onLogin();

@@ -23,6 +23,7 @@ import {
   withdrawals,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
+import { ADMIN_OWNER_EMAIL } from "./adminAccess";
 import { calculateTournamentAwards } from "./tournamentPayouts";
 import { allocateEntryFee } from "./tournamentWalletRules";
 
@@ -65,7 +66,7 @@ export async function upsertUser(user: InsertUser): Promise<void> {
   const db = await getDb();
   if (!db) throw new Error("Neon database is not configured");
 
-  const designatedAdminEmail = "rosidulshah4@gmail.com";
+  const designatedAdminEmail = ADMIN_OWNER_EMAIL;
   const shouldBeAdmin = user.role === "admin"
     || user.openId === ENV.ownerOpenId
     || user.email?.toLowerCase() === designatedAdminEmail;
@@ -81,6 +82,12 @@ export async function upsertUser(user: InsertUser): Promise<void> {
       .limit(1);
 
     if (existingByEmail && existingByEmail.openId !== user.openId) {
+      const [existingByOpenId] = await db.select().from(users)
+        .where(eq(users.openId, user.openId))
+        .limit(1);
+      if (existingByOpenId && existingByOpenId.id !== existingByEmail.id) {
+        throw new Error("OAuth identity is already linked to a different account; reconcile the duplicate account before signing in");
+      }
       await db.update(users).set({
         openId: user.openId,
         name: user.name ?? existingByEmail.name,

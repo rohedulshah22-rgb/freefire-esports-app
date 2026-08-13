@@ -322,3 +322,8 @@
 - [x] Create an isolated owner-account sign-in entry that avoids player-session callback conflicts
 - [x] Require the owner email and server-verified Admin Panel credentials before rendering dashboard data
 - [x] Add regression coverage for owner-only Admin Panel authorization and session-safe login intent
+
+## Phase 49: Admin OAuth Callback Crash Repair
+- [x] Analyze the supplied recording and current server logs for the callback failure signature
+- [x] Repair the Admin owner OAuth callback route without weakening owner-only access controls
+- [x] Add regression coverage for the callback redirect and failure-handling contract

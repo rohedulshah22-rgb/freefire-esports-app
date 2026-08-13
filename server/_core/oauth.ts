@@ -63,6 +63,10 @@ export function registerOAuthRoutes(app: Express) {
       res.redirect(302, options.redirectPath);
     } catch (error) {
       console.error("[OAuth] Callback failed", error);
+      if (options.requireOwnerEmail) {
+        res.redirect(302, `${options.redirectPath}?authError=callback-failed`);
+        return;
+      }
       res.status(500).json({ error: "OAuth callback failed" });
     }
   };
