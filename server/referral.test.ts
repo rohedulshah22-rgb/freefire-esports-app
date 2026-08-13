@@ -87,14 +87,19 @@ describe("Refer & Earn workflow", () => {
     expect(bonusTransactions.rows[0]!.count).toBe("2");
   }, 20_000);
 
-  it("keeps Refer & Earn player and owner-admin UI intent connected to the protected referral contracts", async () => {
-    const [profileSource, adminSource] = await Promise.all([
+  it("keeps Refer & Earn player guidance, Home navigation, and owner-admin UI intent connected to the protected referral contracts", async () => {
+    const [profileSource, homeSource, adminSource] = await Promise.all([
       readFile(new URL("../client/src/pages/Profile.tsx", import.meta.url), "utf8"),
+      readFile(new URL("../client/src/pages/Home.tsx", import.meta.url), "utf8"),
       readFile(new URL("../client/src/pages/AdminDashboard.tsx", import.meta.url), "utf8"),
     ]);
     expect(profileSource).toContain("trpc.referrals.dashboard.useQuery");
     expect(profileSource).toContain("trpc.referrals.applyCode.useMutation");
-    expect(profileSource).toContain("Refer & Earn");
+    expect(profileSource).toContain("How It Works & Benefits");
+    expect(profileSource).toContain("Referral Rules & Terms");
+    expect(profileSource).toContain("Matching device or request-origin signals automatically block");
+    expect(homeSource).toContain("Dual Bonus Rewards");
+    expect(homeSource).toContain('window.location.href = "/profile#refer-earn"');
     expect(adminSource).toContain('TabsTrigger value="referrals"');
     expect(adminSource).toContain("trpc.referrals.updateSettings.useMutation");
     expect(adminSource).toContain("Fraud Blocked");

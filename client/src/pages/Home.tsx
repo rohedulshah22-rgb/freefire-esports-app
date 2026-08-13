@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { AlertCircle, Zap, Users, Trophy, Wallet, UserRound, Medal } from "lucide-react";
+import { AlertCircle, ArrowRight, Gift, Zap, Users, Trophy, Wallet, UserRound, Medal } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useState, useEffect } from "react";
 import { getLoginUrl } from "@/const";
@@ -284,6 +284,13 @@ export default function Home() {
       <div className="mx-auto max-w-4xl px-4 py-6">
         {/* UTR Warning */}
         <UTRWarning />
+
+        <Card className="card-gaming mb-6 overflow-hidden border-accent/35 bg-gradient-to-r from-primary/15 via-background to-accent/10">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-3"><div className="rounded-xl border border-accent/35 bg-accent/10 p-3"><Gift className="h-6 w-6 text-accent" /></div><div><div className="flex flex-wrap items-center gap-2"><h2 className="text-lg font-black text-accent">Refer & Earn</h2><Badge className="border-primary/35 bg-primary/10 text-primary">Dual Bonus Rewards</Badge></div><p className="mt-1 max-w-xl text-sm text-muted-foreground">Invite a friend, help them complete their first valid match join, and both of you receive Bonus Coins.</p></div></div>
+            <Button className="btn-neon shrink-0" onClick={() => { window.location.href = "/profile#refer-earn"; }}>Open Refer & Earn <ArrowRight className="ml-2 h-4 w-4" /></Button>
+          </div>
+        </Card>
 
         {/* Wallet Overview */}
         {wallet && (

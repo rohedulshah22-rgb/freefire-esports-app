@@ -361,3 +361,9 @@
 - [x] Add same-device and request-origin fraud safeguards with safe reward blocking
 - [x] Add owner-admin referral reward settings, referral totals, and fraud-block reporting
 - [x] Add deterministic coverage for enrollment, reward idempotency, fraud prevention, and Admin authorization
+
+## Phase 56: Refer & Earn Guidance and Home Discovery
+- [x] Add a clear How It Works & Benefits explanation to the player Refer & Earn experience
+- [x] Add accessible Referral Rules & Terms disclosures covering eligibility, fair play, fraud blocks, and Bonus Coin conditions
+- [x] Add a prominent Home Screen Refer & Earn shortcut that routes directly to the player referral experience
+- [x] Add regression coverage for player referral guidance, rules disclosures, and Home navigation intent
