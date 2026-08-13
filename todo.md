@@ -312,3 +312,7 @@
 - [x] Add configuration-ready payment router contracts without activating live Razorpay checkout
 - [x] Keep the Deposit page in testing mode with standard responsive page margins until live credentials are set
 - [x] Add rollback-safe coverage for payment settlement, duplicate events, and failed payments
+
+## Phase 47: UTR Input Contract Alignment
+- [x] Update the Deposit page UTR field to accept exactly 12 numeric digits
+- [x] Add a regression test that keeps frontend UTR constraints aligned with server validation

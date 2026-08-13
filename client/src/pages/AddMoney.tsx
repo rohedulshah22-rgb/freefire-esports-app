@@ -127,7 +127,7 @@ export default function AddMoneyPage() {
       return;
     }
 
-    if (utrNumber.length !== 12) {
+    if (!/^\d{12}$/.test(utrNumber)) {
       alert("UTR number must be exactly 12 digits");
       return;
     }
@@ -216,8 +216,10 @@ export default function AddMoneyPage() {
               type="text"
               placeholder="Enter UTR (12 digits)"
               value={utrNumber}
-              onChange={(e) => setUtrNumber(e.target.value.slice(0, 12))}
+              onChange={(e) => setUtrNumber(e.target.value.replace(/\D/g, "").slice(0, 12))}
               maxLength={12}
+              inputMode="numeric"
+              pattern="[0-9]{12}"
               className="input-gaming font-mono text-lg"
             />
             <p className="mt-2 text-xs text-muted-foreground">
