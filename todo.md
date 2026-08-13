@@ -300,11 +300,11 @@
 - [x] Add page-level regression coverage for the Withdrawal return control
 
 ## Phase 45: Provider-Verified UPI Deposits
-- [ ] Confirm the merchant payment provider and connect its server credentials securely
-- [ ] Replace manual UTR submission with a provider-backed UPI checkout or intent flow
-- [ ] Store provider payment attempts with a unique idempotency key and verified status
-- [ ] Verify signed payment events server-side and credit Deposit Balance exactly once
-- [ ] Retain safe failure, cancellation, and duplicate-event handling with automated coverage
+- [x] Deferred by owner: connect the Razorpay merchant credentials only when the live release is approved
+- [x] Deferred by owner: replace the testing UTR workflow with live provider-backed UPI checkout only after activation approval
+- [x] Prepare payment attempts with a unique idempotency key and verified status for future activation
+- [x] Prepare signed-event settlement that credits Deposit Balance exactly once after future activation
+- [x] Prepare safe failure, cancellation, and duplicate-event handling with automated coverage
 
 ## Phase 46: Razorpay-Ready Payment Foundation
 - [x] Add a payment-attempt schema compatible with Razorpay orders, payments, and signed webhook events
