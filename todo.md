@@ -298,3 +298,17 @@
 - [x] Add regression coverage for both wallet return routes
 - [x] Add page-level regression coverage for the Deposit return control
 - [x] Add page-level regression coverage for the Withdrawal return control
+
+## Phase 45: Provider-Verified UPI Deposits
+- [ ] Confirm the merchant payment provider and connect its server credentials securely
+- [ ] Replace manual UTR submission with a provider-backed UPI checkout or intent flow
+- [ ] Store provider payment attempts with a unique idempotency key and verified status
+- [ ] Verify signed payment events server-side and credit Deposit Balance exactly once
+- [ ] Retain safe failure, cancellation, and duplicate-event handling with automated coverage
+
+## Phase 46: Razorpay-Ready Payment Foundation
+- [x] Add a payment-attempt schema compatible with Razorpay orders, payments, and signed webhook events
+- [x] Add idempotent payment settlement helpers that credit Deposit Balance exactly once after verification
+- [x] Add configuration-ready payment router contracts without activating live Razorpay checkout
+- [x] Keep the Deposit page in testing mode with standard responsive page margins until live credentials are set
+- [x] Add rollback-safe coverage for payment settlement, duplicate events, and failed payments

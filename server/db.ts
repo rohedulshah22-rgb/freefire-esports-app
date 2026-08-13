@@ -5,6 +5,7 @@ import * as schema from "../drizzle/schema";
 import {
   type InsertDeposit,
   type InsertMatch,
+  type InsertPaymentAttempt,
   type InsertReferral,
   type InsertTransaction,
   type InsertUser,
@@ -14,6 +15,7 @@ import {
   matchModes,
   matchParticipants,
   matches,
+  paymentAttempts,
   referrals,
   transactions,
   users,
@@ -515,6 +517,116 @@ export async function createDeposit(deposit: InsertDeposit, databaseOverride?: W
   if (!db) throw new Error("Neon database is not configured");
   const result = await db.insert(deposits).values(deposit).returning({ id: deposits.id });
   return result[0]!.id;
+}
+
+export async function createPaymentAttempt(
+  paymentAttempt: InsertPaymentAttempt,
+  databaseOverride?: WorkflowDatabase,
+) {
+  if (!Number.isFinite(Number(paymentAttempt.amount)) || Number(paymentAttempt.amount) <= 0) {
+    throw new Error("Payment amount must be greater than zero");
+  }
+  const db = databaseOverride ?? await requireDb();
+  const result = await db.insert(paymentAttempts).values(paymentAttempt).returning({ id: paymentAttempts.id });
+  return result[0]!.id;
+}
+
+export async function attachPaymentAttemptOrder(
+  paymentAttemptId: number,
+  providerOrderId: string,
+  databaseOverride?: WorkflowDatabase,
+) {
+  const db = databaseOverride ?? await requireDb();
+  const updated = await db.update(paymentAttempts).set({ providerOrderId, updatedAt: new Date() })
+    .where(eq(paymentAttempts.id, paymentAttemptId))
+    .returning({ id: paymentAttempts.id });
+  if (updated.length === 0) throw new Error("Payment attempt not found");
+}
+
+export async function getPaymentAttemptForUser(
+  paymentAttemptId: number,
+  userId: number,
+  databaseOverride?: WorkflowDatabase,
+) {
+  const db = databaseOverride ?? await requireDb();
+  const rows = await db.select().from(paymentAttempts)
+    .where(and(eq(paymentAttempts.id, paymentAttemptId), eq(paymentAttempts.userId, userId)))
+    .limit(1);
+  return rows[0];
+}
+
+/**
+ * Applies a verified provider payment exactly once. The payment-attempt row is
+ * locked first, making provider webhook redelivery harmless and auditable.
+ */
+export async function settleVerifiedPaymentAttempt(
+  input: { providerOrderId: string; providerPaymentId: string; providerEventId?: string },
+  databaseOverride?: WorkflowDatabase,
+) {
+  return withinWorkflowTransaction(databaseOverride, async (tx) => {
+    const attemptRows = await tx.select().from(paymentAttempts)
+      .where(eq(paymentAttempts.providerOrderId, input.providerOrderId))
+      .limit(1)
+      .for("update");
+    const attempt = attemptRows[0];
+    if (!attempt) throw new Error("Payment attempt not found");
+    if (attempt.provider !== "razorpay") throw new Error("Unsupported payment provider");
+    if (attempt.status === "captured") {
+      if (attempt.providerPaymentId && attempt.providerPaymentId !== input.providerPaymentId) {
+        throw new Error("Payment attempt already settled with a different payment");
+      }
+      return { paymentAttemptId: attempt.id, credited: false, status: attempt.status } as const;
+    }
+    if (attempt.status === "failed" || attempt.status === "cancelled") {
+      throw new Error("Payment attempt cannot be settled after failure or cancellation");
+    }
+
+    await tx.insert(wallets).values({ userId: attempt.userId, depositBalance: "0", winningBalance: "0", bonusBalance: "0" })
+      .onConflictDoNothing({ target: wallets.userId });
+    await tx.select().from(wallets).where(eq(wallets.userId, attempt.userId)).limit(1).for("update");
+
+    await tx.update(paymentAttempts).set({
+      providerPaymentId: input.providerPaymentId,
+      providerEventId: input.providerEventId ?? null,
+      status: "captured",
+      failureReason: null,
+      capturedAt: new Date(),
+      updatedAt: new Date(),
+    }).where(eq(paymentAttempts.id, attempt.id));
+    await tx.update(wallets).set({
+      depositBalance: sql`${wallets.depositBalance} + ${Number(attempt.amount)}`,
+      updatedAt: new Date(),
+    }).where(eq(wallets.userId, attempt.userId));
+    await tx.insert(transactions).values({
+      userId: attempt.userId,
+      type: "deposit",
+      amount: Number(attempt.amount).toFixed(2),
+      balanceType: "deposit",
+      paymentAttemptId: attempt.id,
+      status: "completed",
+      description: `Verified Razorpay payment ${input.providerPaymentId}`,
+    });
+    return { paymentAttemptId: attempt.id, credited: true, status: "captured" } as const;
+  });
+}
+
+export async function markPaymentAttemptFailed(
+  providerOrderId: string,
+  failureReason: string,
+  databaseOverride?: WorkflowDatabase,
+) {
+  return withinWorkflowTransaction(databaseOverride, async (tx) => {
+    const attemptRows = await tx.select().from(paymentAttempts)
+      .where(eq(paymentAttempts.providerOrderId, providerOrderId))
+      .limit(1)
+      .for("update");
+    const attempt = attemptRows[0];
+    if (!attempt) throw new Error("Payment attempt not found");
+    if (attempt.status === "captured") return { paymentAttemptId: attempt.id, status: attempt.status } as const;
+    await tx.update(paymentAttempts).set({ status: "failed", failureReason, updatedAt: new Date() })
+      .where(eq(paymentAttempts.id, attempt.id));
+    return { paymentAttemptId: attempt.id, status: "failed" } as const;
+  });
 }
 
 export async function getPendingDeposits() {

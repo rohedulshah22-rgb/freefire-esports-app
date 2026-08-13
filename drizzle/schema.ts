@@ -31,6 +31,7 @@ export const participantStatusEnum = pgEnum("participant_status", ["joined", "co
 export const depositStatusEnum = pgEnum("deposit_status", ["pending", "approved", "rejected"]);
 export const withdrawalStatusEnum = pgEnum("withdrawal_status", ["pending", "approved", "rejected", "completed"]);
 export const payoutMethodEnum = pgEnum("payout_method", ["upi", "google_play"]);
+export const paymentAttemptStatusEnum = pgEnum("payment_attempt_status", ["created", "authorized", "captured", "failed", "cancelled"]);
 
 export const users = pgTable("users", {
   id: bigserial("id", { mode: "number" }).primaryKey(),
@@ -108,6 +109,26 @@ export const matches = pgTable("matches", {
   updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
 });
 
+/**
+ * Provider-neutral payment record. Razorpay order/payment/event identifiers are
+ * persisted here so future webhook delivery can be verified and settled once.
+ */
+export const paymentAttempts = pgTable("paymentAttempts", {
+  id: bigserial("id", { mode: "number" }).primaryKey(),
+  userId: bigint("userId", { mode: "number" }).notNull().references(() => users.id, { onDelete: "cascade" }),
+  amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
+  provider: varchar("provider", { length: 32 }).default("razorpay").notNull(),
+  providerOrderId: varchar("providerOrderId", { length: 128 }).unique(),
+  providerPaymentId: varchar("providerPaymentId", { length: 128 }).unique(),
+  providerEventId: varchar("providerEventId", { length: 128 }).unique(),
+  idempotencyKey: varchar("idempotencyKey", { length: 128 }).notNull().unique(),
+  status: paymentAttemptStatusEnum("status").default("created").notNull(),
+  failureReason: text("failureReason"),
+  capturedAt: timestamp("capturedAt", { withTimezone: true }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+});
+
 export const deposits = pgTable("deposits", {
   id: bigserial("id", { mode: "number" }).primaryKey(),
   userId: bigint("userId", { mode: "number" }).notNull().references(() => users.id, { onDelete: "cascade" }),
@@ -167,6 +188,7 @@ export const transactions = pgTable("transactions", {
   matchId: bigint("matchId", { mode: "number" }).references(() => matches.id, { onDelete: "set null" }),
   withdrawalId: bigint("withdrawalId", { mode: "number" }).references(() => withdrawals.id, { onDelete: "set null" }),
   referralId: bigint("referralId", { mode: "number" }).references(() => referrals.id, { onDelete: "set null" }),
+  paymentAttemptId: bigint("paymentAttemptId", { mode: "number" }).references(() => paymentAttempts.id, { onDelete: "set null" }),
   utrNumber: varchar("utrNumber", { length: 12 }),
   status: transactionStatusEnum("status").default("pending").notNull(),
   description: text("description"),
@@ -197,6 +219,8 @@ export type MatchParticipant = typeof matchParticipants.$inferSelect;
 export type InsertMatchParticipant = typeof matchParticipants.$inferInsert;
 export type Deposit = typeof deposits.$inferSelect;
 export type InsertDeposit = typeof deposits.$inferInsert;
+export type PaymentAttempt = typeof paymentAttempts.$inferSelect;
+export type InsertPaymentAttempt = typeof paymentAttempts.$inferInsert;
 export type Withdrawal = typeof withdrawals.$inferSelect;
 export type InsertWithdrawal = typeof withdrawals.$inferInsert;
 export type Referral = typeof referrals.$inferSelect;

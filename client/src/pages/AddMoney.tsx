@@ -183,11 +183,11 @@ export default function AddMoneyPage() {
 
             <div className="mb-6 rounded-lg border border-dashed border-accent/50 bg-accent/10 p-4">
               <div className="mb-1 flex items-center gap-2">
-                <Badge className="bg-accent/20 text-accent">TESTING MODE</Badge>
-                <p className="font-semibold text-accent">UPI QR and payment details are not configured yet</p>
+                <Badge className="bg-accent/20 text-accent">TESTING MODE · RAZORPAY READY</Badge>
+                <p className="font-semibold text-accent">Live Razorpay checkout and UPI QR are not activated yet</p>
               </div>
               <p className="text-xs text-muted-foreground">
-                Do not transfer real money. This page currently lets you test the 12-digit UTR submission workflow, which creates a pending Neon deposit request for admin review.
+                Do not transfer real money. The secure payment and automatic wallet-credit foundation is ready for future credentials; this screen currently retains the test UTR workflow and standard responsive page gutters.
               </p>
             </div>
 
@@ -229,11 +229,10 @@ export default function AddMoneyPage() {
           <div className="mb-6 rounded-lg bg-secondary/10 p-4">
             <h3 className="mb-2 font-semibold text-foreground">Payment Instructions</h3>
             <ol className="space-y-2 text-sm text-muted-foreground">
-              <li>1. Click "Proceed to Payment" below</li>
-              <li>2. Complete the bank transfer</li>
-              <li>3. You'll receive a UTR number via SMS/Email</li>
-              <li>4. Enter the UTR number above</li>
-              <li>5. Submit and wait for admin approval</li>
+              <li>1. This payment screen is currently in testing mode.</li>
+              <li>2. Do not make a real transfer until the owner activates Razorpay.</li>
+              <li>3. Use the 12-digit UTR field only to test the existing pending-request workflow.</li>
+              <li>4. After activation, this flow will launch a verified UPI checkout and credit the wallet only after payment confirmation.</li>
             </ol>
           </div>
 
@@ -252,7 +251,7 @@ export default function AddMoneyPage() {
             disabled={addMoneyMutation.isPending}
             size="lg"
           >
-            {addMoneyMutation.isPending ? "Processing..." : "Proceed to Payment"}
+            {addMoneyMutation.isPending ? "Processing..." : "Submit Test Deposit Request"}
           </Button>
         </Card>
 

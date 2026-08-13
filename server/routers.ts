@@ -41,10 +41,15 @@ import {
   processWithdrawalRequest,
   getPlayerProfile,
   updatePlayerProfile,
+  attachPaymentAttemptOrder,
+  createPaymentAttempt,
+  getPaymentAttemptForUser,
 } from "./db";
 import { COOKIE_NAME } from "@shared/const";
 import { TRPCError } from "@trpc/server";
 import { ENV } from "./_core/env";
+import { randomUUID } from "node:crypto";
+import { createRazorpayOrder, getRazorpayReadiness } from "./razorpay";
 
 /**
  * Admin-only procedure - checks if user is authenticated
@@ -240,6 +245,47 @@ export const appRouter = router({
           });
         }
       }),
+  }),
+
+  payments: router({
+    razorpayStatus: protectedProcedure.query(() => getRazorpayReadiness()),
+
+    createRazorpayCheckout: protectedProcedure
+      .input(z.object({ amount: z.string().regex(/^\d+(?:\.\d{1,2})?$/, "Enter a valid amount") }))
+      .mutation(async ({ ctx, input }) => {
+        const amount = Number(input.amount);
+        if (amount < 50) throw new TRPCError({ code: "BAD_REQUEST", message: "Minimum deposit is 50 Coins" });
+        const readiness = getRazorpayReadiness();
+        if (!readiness.configured) {
+          throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Razorpay is not configured; deposits remain in testing mode" });
+        }
+
+        const idempotencyKey = `rzp_${randomUUID()}`;
+        const paymentAttemptId = await createPaymentAttempt({
+          userId: ctx.user.id,
+          amount: amount.toFixed(2),
+          provider: "razorpay",
+          idempotencyKey,
+          status: "created",
+        });
+        try {
+          const order = await createRazorpayOrder({ amount, receipt: idempotencyKey, userId: ctx.user.id });
+          await attachPaymentAttemptOrder(paymentAttemptId, order.id);
+          return {
+            paymentAttemptId,
+            keyId: ENV.razorpayKeyId,
+            orderId: order.id,
+            amount: order.amount,
+            currency: order.currency,
+          };
+        } catch (error) {
+          throw new TRPCError({ code: "BAD_GATEWAY", message: error instanceof Error ? error.message : "Unable to start Razorpay checkout" });
+        }
+      }),
+
+    getPaymentAttempt: protectedProcedure
+      .input(z.object({ paymentAttemptId: z.number() }))
+      .query(async ({ ctx, input }) => getPaymentAttemptForUser(input.paymentAttemptId, ctx.user.id)),
   }),
 
   /**
