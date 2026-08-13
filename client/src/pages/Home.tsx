@@ -131,6 +131,7 @@ function MatchCard({
             <Badge variant="outline" className="badge-gaming">
               {match.mode.name}
             </Badge>
+            {match.match.customModeTag ? <Badge className="border border-accent/35 bg-accent/15 text-accent hover:bg-accent/15">{match.match.customModeTag}</Badge> : null}
             <Badge variant="secondary">
               {match.match.currentPlayers}/{match.mode.maxPlayers}
             </Badge>
@@ -145,6 +146,7 @@ function MatchCard({
           <p className="mt-1 font-semibold text-accent">
             Entry: {match.match.entryFee} Coins
           </p>
+          {match.match.rulesSummary ? <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-muted-foreground"><span className="font-semibold text-foreground">Rules:</span> {match.match.rulesSummary}</p> : null}
         </div>
         <Button
           size="sm"

@@ -56,6 +56,8 @@ export default function MatchDetailPage() {
     maxPlayers: matchData.match.totalSlots,
     prizePool: matchData.match.totalPrizePool,
     perKillReward: matchData.match.perKillReward,
+    customModeTag: matchData.match.customModeTag,
+    rulesSummary: matchData.match.rulesSummary,
     startTime: matchData.match.scheduledStartTime,
     status: matchData.match.status,
     roomId: roomCredentialsQuery.data?.roomId,
@@ -159,6 +161,7 @@ export default function MatchDetailPage() {
               <p className="text-xs text-muted-foreground">
                 {match.category} • {match.mode}
               </p>
+              {match.customModeTag ? <Badge className="mt-1 border border-accent/35 bg-accent/15 text-accent hover:bg-accent/15">{match.customModeTag}</Badge> : null}
             </div>
           </div>
         </div>
@@ -199,6 +202,8 @@ export default function MatchDetailPage() {
             </div>
           </div>
         </Card>
+
+        {(match.customModeTag || match.rulesSummary) ? <Card className="card-gaming border-accent/25"><h2 className="flex items-center gap-2 font-bold text-foreground"><AlertCircle className="h-5 w-5 text-accent" />Custom Mode Rules</h2>{match.customModeTag ? <Badge className="mt-3 border border-accent/35 bg-accent/15 text-accent hover:bg-accent/15">{match.customModeTag}</Badge> : null}<p className="mt-3 text-sm leading-relaxed text-muted-foreground">{match.rulesSummary || "Follow the match rules shown in the Rules tab and the room briefing."}</p></Card> : null}
 
         {/* Join Button */}
         {!isMatchStarted && (

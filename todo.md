@@ -432,3 +432,10 @@
 - [x] Strengthen basic device-ID safeguards for account enrollment and referrals without blocking legitimate existing accounts
 - [x] Add an Admin Dashboard financial summary of total approved deposits and completed withdrawals
 - [x] Add regression coverage for timers, prize breakdowns, device safeguards, and financial-summary access
+
+## Phase 67: Custom Game Mode Tags and Rules
+- [x] Persist optional custom game-mode tags and player-visible rules on matches
+- [x] Extend Admin match creation with tag/rules fields and a calculated 20% Admin Profit Margin preview
+- [x] Preserve Entry Fee, Total Prize Pool, and Per-Kill Reward creation controls with validated numeric inputs
+- [x] Render custom mode badges and rule summaries dynamically on player match cards and details
+- [x] Add regression coverage for match metadata persistence, Admin profit preview, and player rendering intent

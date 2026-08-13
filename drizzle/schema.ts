@@ -93,6 +93,8 @@ export const matches = pgTable("matches", {
   modeId: bigint("modeId", { mode: "number" }).notNull().references(() => matchModes.id, { onDelete: "restrict" }),
   matchTitle: varchar("matchTitle", { length: 128 }).notNull(),
   mapName: varchar("mapName", { length: 128 }).notNull(),
+  customModeTag: varchar("customModeTag", { length: 80 }),
+  rulesSummary: text("rulesSummary"),
   scheduledStartTime: timestamp("scheduledStartTime", { withTimezone: true }).notNull(),
   scheduledEndTime: timestamp("scheduledEndTime", { withTimezone: true }),
   roomId: varchar("roomId", { length: 64 }),

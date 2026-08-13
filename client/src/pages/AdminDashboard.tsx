@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -52,6 +53,12 @@ function CreateMatchForm() {
   const [perKillAmount, setPerKillAmount] = useState("2");
   const [totalSlots, setTotalSlots] = useState("");
   const [matchTime, setMatchTime] = useState("");
+  const [customModeTag, setCustomModeTag] = useState("");
+  const [rulesSummary, setRulesSummary] = useState("");
+  const entryFeeNumber = Number(entryFee) || 0;
+  const totalSlotsNumber = Number(totalSlots) || 0;
+  const projectedGrossPool = entryFeeNumber * totalSlotsNumber;
+  const projectedAdminProfit = projectedGrossPool * 0.2;
 
   const createMatchMutation = trpc.admin.createMatch.useMutation({
     onSuccess: (data: any) => {
@@ -63,6 +70,8 @@ function CreateMatchForm() {
       setPerKillAmount("2");
       setTotalSlots("");
       setMatchTime("");
+      setCustomModeTag("");
+      setRulesSummary("");
       setMatchType("BR");
       setMode("Solo");
     },
@@ -97,15 +106,26 @@ function CreateMatchForm() {
       return;
     }
 
+    const parsedEntryFee = parseFloat(entryFee);
+    const parsedPrizePool = parseFloat(prizePool);
+    const parsedPerKillAmount = parseFloat(perKillAmount);
+    const parsedTotalSlots = parseInt(totalSlots, 10);
+    if (![parsedEntryFee, parsedPrizePool, parsedPerKillAmount, parsedTotalSlots].every(Number.isFinite) || parsedEntryFee < 0 || parsedPrizePool < 0 || parsedPerKillAmount < 0 || parsedTotalSlots < 1) {
+      toast.error("Enter valid non-negative fees and rewards, and at least one slot.");
+      return;
+    }
+
     const payload = {
       matchType: matchType as any,
       mode: mode as any,
       matchTitle: matchTitle,
       mapName: matchTitle,
-      entryFee: parseFloat(entryFee),
-      totalSlots: parseInt(totalSlots),
-      totalPrizePool: parseFloat(prizePool),
-      perKillReward: parseFloat(perKillAmount),
+      customModeTag: customModeTag.trim() || undefined,
+      rulesSummary: rulesSummary.trim() || undefined,
+      entryFee: parsedEntryFee,
+      totalSlots: parsedTotalSlots,
+      totalPrizePool: parsedPrizePool,
+      perKillReward: parsedPerKillAmount,
       scheduledStartTime: parsedDate,
     };
 
@@ -172,6 +192,11 @@ function CreateMatchForm() {
         />
       </div>
 
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div><label className="mb-2 block text-sm font-semibold">Custom Game Mode Tag <span className="text-muted-foreground">(optional)</span></label><Input placeholder="e.g., BR Per Kill Special" value={customModeTag} onChange={(event) => setCustomModeTag(event.target.value)} maxLength={80} className="input-gaming" /></div>
+        <div><label className="mb-2 block text-sm font-semibold">Player Rule Summary <span className="text-muted-foreground">(optional)</span></label><Textarea placeholder="e.g., UMP only · No grenades · Headshot rules" value={rulesSummary} onChange={(event) => setRulesSummary(event.target.value)} maxLength={1_000} className="input-gaming min-h-[84px] resize-y" /></div>
+      </div>
+
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-semibold mb-2">Entry Fee (₹)</label>
@@ -231,6 +256,8 @@ function CreateMatchForm() {
       <div className="bg-primary/10 border border-primary/20 rounded-lg p-3 text-sm text-muted-foreground">
         <strong>Auto-Refund Rule:</strong> BR matches with fewer than 10 players will auto-cancel 5 minutes before start time, with instant refunds to all joined players' wallets.
       </div>
+
+      <div className="rounded-lg border border-accent/30 bg-accent/10 p-3"><div className="flex items-center justify-between gap-3"><div><p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Admin Profit Margin</p><p className="mt-1 text-lg font-black text-accent">20% · ₹{projectedAdminProfit.toFixed(2)} projected</p></div><div className="text-right text-xs text-muted-foreground"><p>Gross at full slots: ₹{projectedGrossPool.toFixed(2)}</p><p className="mt-1">Net after margin: ₹{(projectedGrossPool - projectedAdminProfit).toFixed(2)}</p></div></div></div>
 
       <Button
         className="btn-neon w-full"
