@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, lt, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, lt, sql } from "drizzle-orm";
 import { drizzle, type NodePgDatabase } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import { createHash, randomUUID } from "node:crypto";
@@ -738,6 +738,119 @@ export async function updateMatch(matchId: number, updates: Partial<InsertMatch>
   const db = await getDb();
   if (!db) throw new Error("Neon database is not configured");
   await db.update(matches).set({ ...updates, updatedAt: new Date() }).where(eq(matches.id, matchId));
+}
+
+/** Owner-only data contract for scheduled and live tournaments. */
+export async function getAdminActiveMatches(databaseOverride?: WorkflowDatabase) {
+  const db = databaseOverride ?? await requireDb();
+  return db.select({
+    id: matches.id,
+    matchTitle: matches.matchTitle,
+    mapName: matches.mapName,
+    customModeTag: matches.customModeTag,
+    scheduledStartTime: matches.scheduledStartTime,
+    status: matches.status,
+    entryFee: matches.entryFee,
+    totalSlots: matches.totalSlots,
+    currentPlayers: matches.currentPlayers,
+    roomId: matches.roomId,
+    roomPassword: matches.roomPassword,
+    credentialsVisibleAt: matches.credentialsVisibleAt,
+    categoryName: matchCategories.name,
+    modeName: matchModes.name,
+  }).from(matches)
+    .innerJoin(matchCategories, eq(matches.categoryId, matchCategories.id))
+    .innerJoin(matchModes, eq(matches.modeId, matchModes.id))
+    .where(inArray(matches.status, ["scheduled", "active"]))
+    .orderBy(matches.scheduledStartTime);
+}
+
+export async function publishMatchRoomCredentials(
+  matchId: number,
+  input: { roomId: string; roomPassword: string },
+  adminUserId: number,
+  databaseOverride?: WorkflowDatabase,
+) {
+  return withinWorkflowTransaction(databaseOverride, async (tx) => {
+    const rows = await tx.select().from(matches).where(eq(matches.id, matchId)).limit(1).for("update");
+    const match = rows[0];
+    if (!match) throw new Error("Match not found");
+    if (match.status !== "scheduled" && match.status !== "active") throw new Error("Room details can only be published for active matches");
+    await tx.update(matches).set({ roomId: input.roomId, roomPassword: input.roomPassword, updatedAt: new Date() })
+      .where(eq(matches.id, matchId));
+    await tx.insert(adminAuditLog).values({
+      action: "match.room_credentials_published",
+      details: { matchId, adminUserId, credentialsVisibleAt: match.credentialsVisibleAt?.toISOString() ?? null },
+    });
+    return { matchId, credentialsVisibleAt: match.credentialsVisibleAt };
+  });
+}
+
+/**
+ * Cancels a scheduled/live match and refunds each participant exactly once.
+ * The match row is locked first and every participant receives a durable refund
+ * marker in the same transaction, so duplicate Admin taps are harmless.
+ */
+export async function cancelMatchAndRefund(
+  matchId: number,
+  adminUserId: number,
+  cancellationReason: string,
+  databaseOverride?: WorkflowDatabase,
+) {
+  return withinWorkflowTransaction(databaseOverride, async (tx) => {
+    const matchRows = await tx.select().from(matches).where(eq(matches.id, matchId)).limit(1).for("update");
+    const match = matchRows[0];
+    if (!match) throw new Error("Match not found");
+    if (match.status === "cancelled" && match.refundProcessed) {
+      return { matchId, alreadyCancelled: true, refundedPlayers: 0, totalRefunded: 0 };
+    }
+    if (match.status !== "scheduled" && match.status !== "active") throw new Error("Only scheduled or active matches can be cancelled");
+
+    const participants = await tx.select().from(matchParticipants)
+      .where(eq(matchParticipants.matchId, matchId))
+      .for("update");
+    const refundableParticipants = participants.filter((participant) => !participant.refundedAt);
+    let totalRefunded = 0;
+
+    for (const participant of refundableParticipants) {
+      const amount = Number(participant.entryFeeDeducted);
+      if (!Number.isFinite(amount) || amount < 0) throw new Error("Invalid participant entry fee");
+      await tx.insert(wallets).values({ userId: participant.userId, depositBalance: "0", winningBalance: "0", bonusBalance: "0" })
+        .onConflictDoNothing({ target: wallets.userId });
+      await tx.update(wallets).set({ depositBalance: sql`${wallets.depositBalance} + ${amount}` })
+        .where(eq(wallets.userId, participant.userId));
+      await tx.insert(transactions).values({
+        userId: participant.userId,
+        type: "refund",
+        amount: amount.toFixed(2),
+        balanceType: "deposit",
+        matchId,
+        status: "completed",
+        description: `Match ${matchId} cancelled by Admin: ${cancellationReason}`,
+      });
+      await tx.update(matchParticipants).set({
+        status: "cancelled",
+        refundAmount: amount.toFixed(2),
+        refundedAt: new Date(),
+        updatedAt: new Date(),
+      }).where(eq(matchParticipants.id, participant.id));
+      totalRefunded += amount;
+    }
+
+    const now = new Date();
+    await tx.update(matches).set({
+      status: "cancelled",
+      cancellationReason,
+      cancelledAt: now,
+      refundProcessed: true,
+      updatedAt: now,
+    }).where(eq(matches.id, matchId));
+    await tx.insert(adminAuditLog).values({
+      action: "match.cancelled_with_refunds",
+      details: { matchId, adminUserId, cancellationReason, refundedPlayers: refundableParticipants.length, totalRefunded },
+    });
+    return { matchId, alreadyCancelled: false, refundedPlayers: refundableParticipants.length, totalRefunded };
+  });
 }
 
 export async function joinMatch(

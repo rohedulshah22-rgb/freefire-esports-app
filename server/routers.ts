@@ -58,6 +58,9 @@ import {
   updateReferralSettings,
   registerPlayerDevice,
   getAdminFinancialSummary,
+  getAdminActiveMatches,
+  publishMatchRoomCredentials,
+  cancelMatchAndRefund,
 } from "./db";
 import { ADMIN_PANEL_ACCESS_COOKIE_NAME, ADMIN_PANEL_ACCESS_MS, ADMIN_SESSION_COOKIE_NAME, COOKIE_NAME } from "@shared/const";
 import { TRPCError } from "@trpc/server";
@@ -620,6 +623,35 @@ export const appRouter = router({
       console.log(`[Admin] Retrieved ${allMatches.length} matches from database`);
       return allMatches;
     }),
+
+    getActiveMatches: adminProcedure.query(() => getAdminActiveMatches()),
+
+    publishRoomCredentials: adminProcedure
+      .input(z.object({
+        matchId: z.number().int().positive(),
+        roomId: z.string().trim().min(1).max(64),
+        roomPassword: z.string().trim().min(1).max(64),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        try {
+          return await publishMatchRoomCredentials(input.matchId, input, ctx.user.id);
+        } catch (error) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: error instanceof Error ? error.message : "Unable to publish room details" });
+        }
+      }),
+
+    cancelMatch: adminProcedure
+      .input(z.object({
+        matchId: z.number().int().positive(),
+        cancellationReason: z.string().trim().min(3).max(500).default("Cancelled by Admin"),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        try {
+          return await cancelMatchAndRefund(input.matchId, ctx.user.id, input.cancellationReason);
+        } catch (error) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: error instanceof Error ? error.message : "Unable to cancel and refund match" });
+        }
+      }),
 
     createMatch: adminProcedure
       .input(

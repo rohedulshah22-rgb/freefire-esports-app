@@ -569,6 +569,96 @@ function UsersManagement() {
   );
 }
 
+function ActiveMatchesManagement() {
+  const utils = trpc.useUtils();
+  const { data: activeMatches = [], isLoading } = trpc.admin.getActiveMatches.useQuery();
+  const [roomDrafts, setRoomDrafts] = useState<Record<number, { roomId: string; roomPassword: string }>>({});
+  const [matchToCancel, setMatchToCancel] = useState<any>(null);
+  const [cancellationReason, setCancellationReason] = useState("Cancelled by Admin");
+
+  const publishRoomCredentials = trpc.admin.publishRoomCredentials.useMutation({
+    onSuccess: () => {
+      toast.success("Room ID and password published. Joined players will see them at the configured release time.");
+      utils.admin.getActiveMatches.invalidate();
+    },
+    onError: (error) => toast.error(error.message || "Unable to publish room details."),
+  });
+  const cancelMatch = trpc.admin.cancelMatch.useMutation({
+    onSuccess: (result) => {
+      if (result.alreadyCancelled) {
+        toast.info("This match was already cancelled and refunded.");
+      } else {
+        toast.success(`Match cancelled. Refunded ${result.refundedPlayers} player(s) a total of ₹${result.totalRefunded.toFixed(2)}.`);
+      }
+      setMatchToCancel(null);
+      setCancellationReason("Cancelled by Admin");
+      utils.admin.getActiveMatches.invalidate();
+      utils.admin.getStats.invalidate();
+      utils.matches.getUpcoming.invalidate();
+    },
+    onError: (error) => toast.error(error.message || "Unable to cancel this match."),
+  });
+
+  const updateRoomDraft = (match: any, field: "roomId" | "roomPassword", value: string) => {
+    setRoomDrafts((current) => ({
+      ...current,
+      [match.id]: {
+        roomId: current[match.id]?.roomId ?? match.roomId ?? "",
+        roomPassword: current[match.id]?.roomPassword ?? match.roomPassword ?? "",
+        [field]: value,
+      },
+    }));
+  };
+
+  const publishForMatch = (match: any) => {
+    const draft = roomDrafts[match.id] ?? { roomId: match.roomId ?? "", roomPassword: match.roomPassword ?? "" };
+    if (!draft.roomId.trim() || !draft.roomPassword.trim()) {
+      toast.error("Enter both Room ID and Room Password before publishing.");
+      return;
+    }
+    publishRoomCredentials.mutate({ matchId: match.id, roomId: draft.roomId.trim(), roomPassword: draft.roomPassword.trim() });
+  };
+
+  if (isLoading) return <p className="py-8 text-center text-sm text-muted-foreground">Loading active matches...</p>;
+
+  return (
+    <div className="space-y-4">
+      <div className="rounded-xl border border-primary/30 bg-primary/5 p-4">
+        <h3 className="font-bold text-primary">Publish Room Details Securely</h3>
+        <p className="mt-1 text-sm text-muted-foreground">Room credentials are saved securely and remain visible only to joined players after each match’s configured credential-release time.</p>
+      </div>
+      {activeMatches.length ? activeMatches.map((match) => {
+        const draft = roomDrafts[match.id] ?? { roomId: match.roomId ?? "", roomPassword: match.roomPassword ?? "" };
+        return (
+          <Card key={match.id} className="border border-muted-foreground/20 bg-card/70 p-4">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2"><h3 className="font-bold text-foreground">#{match.id} · {match.matchTitle}</h3><Badge variant="outline" className="border-primary/35 text-primary">{match.categoryName} · {match.modeName}</Badge><Badge className={match.status === "active" ? "bg-green-500/15 text-green-400 hover:bg-green-500/15" : "border border-accent/30 bg-accent/10 text-accent hover:bg-accent/10"}>{match.status}</Badge>{match.customModeTag ? <Badge variant="outline">{match.customModeTag}</Badge> : null}</div>
+                <p className="mt-2 text-sm text-muted-foreground">Starts {new Date(match.scheduledStartTime).toLocaleString()} · {match.currentPlayers}/{match.totalSlots} players · Entry ₹{match.entryFee}</p>
+                <p className="mt-1 text-xs text-muted-foreground">Credential release: {match.credentialsVisibleAt ? new Date(match.credentialsVisibleAt).toLocaleString() : "not configured"}</p>
+              </div>
+              <Button type="button" variant="outline" className="border-destructive/45 text-destructive hover:bg-destructive/10" onClick={() => setMatchToCancel(match)} disabled={cancelMatch.isPending}>Cancel Match & Auto-Refund</Button>
+            </div>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <div><label className="mb-2 block text-sm font-semibold">Room ID</label><Input value={draft.roomId} maxLength={64} onChange={(event) => updateRoomDraft(match, "roomId", event.target.value)} placeholder="Enter Room ID" className="input-gaming" /></div>
+              <div><label className="mb-2 block text-sm font-semibold">Room Password</label><Input value={draft.roomPassword} maxLength={64} onChange={(event) => updateRoomDraft(match, "roomPassword", event.target.value)} placeholder="Enter Room Password" className="input-gaming" /></div>
+            </div>
+            <div className="mt-3 flex justify-end"><Button type="button" className="btn-neon" onClick={() => publishForMatch(match)} disabled={publishRoomCredentials.isPending}>{publishRoomCredentials.isPending ? "Publishing..." : "Publish Room Details"}</Button></div>
+          </Card>
+        );
+      }) : <p className="rounded-xl border border-dashed border-muted-foreground/25 p-8 text-center text-sm text-muted-foreground">No scheduled or ongoing matches are available to manage.</p>}
+
+      <Dialog open={Boolean(matchToCancel)} onOpenChange={(open) => { if (!open) setMatchToCancel(null); }}>
+        <DialogContent className="card-gaming">
+          <DialogHeader><DialogTitle>Cancel Match & Auto-Refund</DialogTitle><DialogDescription>All joined players will receive their exact entry fee back to Deposit Balance. This action is protected against duplicate refunds.</DialogDescription></DialogHeader>
+          <div className="space-y-3"><p className="text-sm font-semibold text-foreground">{matchToCancel ? `#${matchToCancel.id} · ${matchToCancel.matchTitle}` : ""}</p><div><label className="mb-2 block text-sm font-semibold">Cancellation Reason</label><Textarea value={cancellationReason} maxLength={500} onChange={(event) => setCancellationReason(event.target.value)} className="input-gaming min-h-[92px] resize-y" /></div></div>
+          <DialogFooter><Button type="button" variant="outline" onClick={() => setMatchToCancel(null)}>Keep Match</Button><Button type="button" variant="destructive" onClick={() => matchToCancel && cancelMatch.mutate({ matchId: matchToCancel.id, cancellationReason: cancellationReason.trim() || "Cancelled by Admin" })} disabled={cancelMatch.isPending}>{cancelMatch.isPending ? "Cancelling & Refunding..." : "Confirm Cancel & Refund"}</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
 /**
  * Admin login component
  */
@@ -832,8 +922,9 @@ function AdminDashboardContent() {
 
         {/* Tabs */}
         <Tabs defaultValue="deposits" className="w-full">
-          <TabsList className="grid h-auto w-full grid-cols-3 gap-1 md:grid-cols-7">
+          <TabsList className="grid h-auto w-full grid-cols-2 gap-1 md:grid-cols-4">
             <TabsTrigger value="create-match">Create Match</TabsTrigger>
+            <TabsTrigger value="active-matches">Active Matches</TabsTrigger>
             <TabsTrigger value="users">Users Management</TabsTrigger>
             <TabsTrigger value="deposits">Deposits</TabsTrigger>
             <TabsTrigger value="withdrawals">Withdrawals</TabsTrigger>
@@ -847,6 +938,14 @@ function AdminDashboardContent() {
             <Card className="card-gaming">
               <h2 className="mb-6 text-lg font-bold">Create New Match</h2>
               <CreateMatchForm />
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="active-matches" className="mt-6">
+            <Card className="card-gaming">
+              <h2 className="mb-2 flex items-center gap-2 text-lg font-bold"><Gamepad2 className="h-5 w-5 text-primary" />Active Matches</h2>
+              <p className="mb-5 text-sm text-muted-foreground">Publish room credentials, review player capacity, or cancel a match with protected automatic refunds.</p>
+              <ActiveMatchesManagement />
             </Card>
           </TabsContent>
 

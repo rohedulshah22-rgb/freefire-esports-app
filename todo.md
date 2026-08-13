@@ -445,3 +445,9 @@
 - [x] Render responsive sub-category tabs alongside the existing primary match-mode filters
 - [x] Filter the current category and mode match list by the selected custom game-mode tag
 - [x] Add regression coverage for mappings, tab interaction intent, and tag-based filtering
+
+## Phase 69: Admin Active Match Management
+- [x] Review the existing room credential release and automatic-refund workflows for safe reuse
+- [x] Add owner-authorized Active Matches listing and room ID/password publication controls
+- [x] Add an Admin cancel-match action with exactly-once entry-fee refunds to joined players
+- [x] Add regression coverage for authorization, room publishing, match cancellation, and refund idempotency
