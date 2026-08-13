@@ -24,6 +24,11 @@ describe("BooyahCraft managed brand configuration", () => {
     expect(homeSource).toContain("Welcome{welcomeIdentity");
     expect(homeSource).not.toContain("BRAND_TAGLINE");
     expect(homeSource).not.toContain("Ultimate Free Fire & Esports Tournament Platform");
+    expect(homeSource).toContain("flex-col gap-4 sm:flex-row sm:items-start sm:justify-between");
+    expect(homeSource).toContain("grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:shrink-0");
+    expect(homeSource).toContain("break-words text-xl font-bold leading-tight");
+    expect(homeSource).toContain("break-all text-xs leading-relaxed");
+    expect(homeSource).not.toContain('<h1 className="truncate text-2xl');
     expect(profileSource).toContain("title: BRAND_SOCIAL_TITLE");
     expect(deviceGuardSource).toContain("access {BRAND_NAME}");
   });

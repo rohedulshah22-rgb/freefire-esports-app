@@ -381,3 +381,8 @@
 - [x] Keep the player welcome message and signed-in status as the only header copy below the brand row
 - [x] Preserve the official tagline exclusively in HTML and Open Graph sharing metadata
 - [x] Add regression coverage for the compact header and metadata-only tagline boundary
+
+## Phase 59: Responsive Player Header Correction
+- [x] Add clear responsive separation between the BooyahCraft brand block and Ranks/Profile actions
+- [x] Ensure Welcome and signed-in identity text uses responsive sizing and wrapping without truncation
+- [x] Add regression coverage for non-overlapping navigation and readable player identity intent

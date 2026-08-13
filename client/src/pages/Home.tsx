@@ -272,12 +272,12 @@ export default function Home() {
     <div className="min-h-screen bg-background pb-20">
       {/* Header */}
       <div className="border-b border-primary/20 bg-gradient-gaming px-4 py-5">
-        <div className="mx-auto flex max-w-4xl items-start justify-between gap-3">
-          <div className="min-w-0">
+        <div className="mx-auto flex max-w-4xl flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2"><img src={BRAND_LOGO_URL} alt="BooyahCraft logo" className="h-8 w-8 shrink-0 rounded-lg border border-primary/40 bg-background object-cover" /><span className="text-lg font-black tracking-tight text-accent">{BRAND_NAME}</span></div>
-            <div className="mt-3 min-w-0"><h1 className="truncate text-2xl font-bold text-foreground sm:text-3xl">Welcome{welcomeIdentity ? `, ${welcomeIdentity}` : ""}</h1><p className="mt-0.5 truncate text-xs text-muted-foreground">{user?.email ? `Signed in as ${user.email}` : "Ready to compete?"}</p></div>
+            <div className="mt-3"><h1 className="break-words text-xl font-bold leading-tight text-foreground sm:text-3xl">Welcome{welcomeIdentity ? `, ${welcomeIdentity}` : ""}</h1><p className="mt-1 break-all text-xs leading-relaxed text-muted-foreground">{user?.email ? `Signed in as ${user.email}` : "Ready to compete?"}</p></div>
           </div>
-          <div className="flex shrink-0 gap-2"><Button variant="outline" size="sm" className="border-primary/40 text-primary hover:bg-primary/10" onClick={() => { window.location.href = "/leaderboard"; }}><Medal className="mr-1.5 h-4 w-4" />Ranks</Button><Button variant="outline" size="sm" className="border-accent/40 text-accent hover:bg-accent/10" onClick={() => { window.location.href = "/profile"; }}><UserRound className="mr-1.5 h-4 w-4" />Profile</Button></div>
+          <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:shrink-0"><Button variant="outline" size="sm" className="w-full border-primary/40 px-2 text-primary hover:bg-primary/10 sm:w-auto sm:px-3" onClick={() => { window.location.href = "/leaderboard"; }}><Medal className="mr-1.5 h-4 w-4" />Ranks</Button><Button variant="outline" size="sm" className="w-full border-accent/40 px-2 text-accent hover:bg-accent/10 sm:w-auto sm:px-3" onClick={() => { window.location.href = "/profile"; }}><UserRound className="mr-1.5 h-4 w-4" />Profile</Button></div>
         </div>
       </div>
 
