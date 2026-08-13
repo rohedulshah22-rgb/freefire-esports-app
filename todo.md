@@ -332,3 +332,8 @@
 - [x] Show the Profile Admin Panel entry only for rosidulshah4@gmail.com
 - [x] Route the owner-only Profile entry to the isolated Admin login path
 - [x] Add regression coverage for visibility and route intent
+
+## Phase 51: Interactive Profile Admin Controls
+- [x] Make the owner-visible Profile Admin badge route to the isolated Admin login page
+- [x] Make the owner-visible Profile Admin Panel action route on tap or click
+- [x] Add regression coverage for both interactive Admin controls

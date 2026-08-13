@@ -19,6 +19,9 @@ describe("owner-only Profile Admin navigation", () => {
     const source = await readFile(resolve(process.cwd(), "client/src/pages/Profile.tsx"), "utf8");
 
     expect(source).toContain("{canAccessAdminPanel && (");
-    expect(source).toContain('setLocation(ADMIN_PANEL_LOGIN_PATH)');
+    expect(source).toContain("const openAdminPanel = () => setLocation(ADMIN_PANEL_LOGIN_PATH);");
+    expect(source).toContain("onClick={openAdminPanel}");
+    expect(source).toContain('aria-label="Open Admin Panel"');
+    expect(source).toContain("cursor-pointer select-none");
   });
 });

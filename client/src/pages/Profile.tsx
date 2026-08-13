@@ -83,6 +83,7 @@ export default function ProfilePage() {
   const accountName = profile.user.name || user?.name || "Free Fire Player";
   const totalEarnings = Number(profile.totalEarnings || 0).toFixed(2);
   const canAccessAdminPanel = canOpenAdminPanel(profile.user.email);
+  const openAdminPanel = () => setLocation(ADMIN_PANEL_LOGIN_PATH);
 
   return (
     <main className="min-h-screen bg-background pb-24">
@@ -93,7 +94,21 @@ export default function ProfilePage() {
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">Player Command Center</p>
             <h1 className="text-xl font-bold text-accent">My Profile</h1>
           </div>
-          <Badge className="badge-gaming">{profile.user.role === "admin" ? "Admin" : "Player"}</Badge>
+          {canAccessAdminPanel ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-auto rounded-full p-0 focus-visible:ring-2 focus-visible:ring-accent"
+              onClick={openAdminPanel}
+              aria-label="Open Admin Panel"
+              title="Open Admin Panel"
+            >
+              <Badge className="badge-gaming cursor-pointer select-none">Admin</Badge>
+            </Button>
+          ) : (
+            <Badge className="badge-gaming">Player</Badge>
+          )}
         </div>
       </header>
 
@@ -139,9 +154,10 @@ export default function ProfilePage() {
           <div className="grid gap-3 sm:grid-cols-2">
             {canAccessAdminPanel && (
               <Button
+                type="button"
                 variant="outline"
                 className="border-accent/40 text-accent hover:bg-accent/10 sm:col-span-2"
-                onClick={() => setLocation(ADMIN_PANEL_LOGIN_PATH)}
+                onClick={openAdminPanel}
               >
                 <ShieldCheck className="mr-2 h-4 w-4" />Admin Panel
               </Button>
