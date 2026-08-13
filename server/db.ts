@@ -30,10 +30,15 @@ import { ENV } from "./_core/env";
 import { ADMIN_OWNER_EMAIL } from "./adminAccess";
 import { calculateTournamentAwards } from "./tournamentPayouts";
 import { allocateEntryFee } from "./tournamentWalletRules";
+import { storagePut } from "./storage";
 
 let pool: Pool | null = null;
 let database: NodePgDatabase<typeof schema> | null = null;
 export type WorkflowDatabase = NodePgDatabase<typeof schema>;
+
+function getNumericPlayerUid(userId: number) {
+  return String(8_000_000_000 + userId);
+}
 
 export async function getDb() {
   const connectionString = process.env.NEON_DATABASE_URL;
@@ -98,6 +103,7 @@ export async function upsertUser(user: InsertUser): Promise<void> {
         email: user.email,
         loginMethod: user.loginMethod ?? existingByEmail.loginMethod,
         role: shouldBeAdmin ? "admin" : existingByEmail.role,
+        playerUid: existingByEmail.playerUid ?? getNumericPlayerUid(existingByEmail.id),
         lastSignedIn,
         updatedAt: new Date(),
       }).where(eq(users.id, existingByEmail.id));
@@ -105,7 +111,7 @@ export async function upsertUser(user: InsertUser): Promise<void> {
     }
   }
 
-  await db.insert(users).values({
+  const [persistedUser] = await db.insert(users).values({
     openId: user.openId,
     name: user.name ?? null,
     email: user.email ?? null,
@@ -122,7 +128,12 @@ export async function upsertUser(user: InsertUser): Promise<void> {
       lastSignedIn,
       updatedAt: new Date(),
     },
-  });
+  }).returning({ id: users.id, playerUid: users.playerUid });
+
+  if (persistedUser && !persistedUser.playerUid) {
+    await db.update(users).set({ playerUid: getNumericPlayerUid(persistedUser.id), updatedAt: new Date() })
+      .where(eq(users.id, persistedUser.id));
+  }
 }
 
 export async function getUserByOpenId(openId: string) {
@@ -428,8 +439,14 @@ export async function resetLeaderboardWeeklyCycle(updatedBy: number) {
 
 export async function getPlayerProfile(userId: number, databaseOverride?: WorkflowDatabase) {
   const db = databaseOverride ?? await requireDb();
-  const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+  let [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
   if (!user) throw new Error("Player account not found");
+
+  if (!user.playerUid) {
+    const playerUid = getNumericPlayerUid(user.id);
+    await db.update(users).set({ playerUid, updatedAt: new Date() }).where(eq(users.id, user.id));
+    user = { ...user, playerUid };
+  }
 
   const [stats] = await db.select({
     totalMatches: sql<number>`COUNT(*)::int`,
@@ -466,6 +483,37 @@ export async function updatePlayerProfile(
     freeFireUid: input.freeFireUid,
     updatedAt: new Date(),
   }).where(eq(users.id, userId));
+  return getPlayerProfile(userId, db);
+}
+
+const AVATAR_MIME_TYPES = {
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+} as const;
+
+function decodeAvatarImage(base64: string, mimeType: keyof typeof AVATAR_MIME_TYPES) {
+  const normalized = base64.replace(/^data:image\/(?:jpeg|png|webp);base64,/, "");
+  if (!normalized || !/^[A-Za-z0-9+/]+={0,2}$/.test(normalized)) throw new Error("Upload a valid image file");
+  const image = Buffer.from(normalized, "base64");
+  if (image.length === 0 || image.length > 2 * 1024 * 1024) throw new Error("Avatar images must be 2 MB or smaller");
+  const validSignature = (mimeType === "image/jpeg" && image.subarray(0, 3).equals(Buffer.from([0xff, 0xd8, 0xff])))
+    || (mimeType === "image/png" && image.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])))
+    || (mimeType === "image/webp" && image.subarray(0, 4).toString("ascii") === "RIFF" && image.subarray(8, 12).toString("ascii") === "WEBP");
+  if (!validSignature) throw new Error("The selected file does not match its declared image type");
+  return image;
+}
+
+export async function updatePlayerAvatar(
+  userId: number,
+  input: { base64: string; mimeType: keyof typeof AVATAR_MIME_TYPES },
+  databaseOverride?: WorkflowDatabase,
+) {
+  const image = decodeAvatarImage(input.base64, input.mimeType);
+  const extension = AVATAR_MIME_TYPES[input.mimeType];
+  const { url } = await storagePut(`player-avatars/${userId}/${randomUUID()}.${extension}`, image, input.mimeType);
+  const db = databaseOverride ?? await requireDb();
+  await db.update(users).set({ avatarUrl: url, updatedAt: new Date() }).where(eq(users.id, userId));
   return getPlayerProfile(userId, db);
 }
 

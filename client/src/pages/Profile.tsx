@@ -20,6 +20,7 @@ import {
   ShieldCheck,
   Sparkles,
   Copy,
+  Camera,
   CheckCircle2,
   Gift,
   Share2,
@@ -28,7 +29,7 @@ import {
   Trophy,
   UserRound,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 
@@ -45,6 +46,8 @@ export default function ProfilePage() {
   const [editing, setEditing] = useState(false);
   const [freeFireName, setFreeFireName] = useState("");
   const [freeFireUid, setFreeFireUid] = useState("");
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
   const [referralCodeInput, setReferralCodeInput] = useState(() => typeof window === "undefined" ? "" : new URLSearchParams(window.location.search).get("ref")?.toUpperCase() ?? "");
   const referralDeviceToken = getReferralDeviceToken();
   const referralQuery = trpc.referrals.dashboard.useQuery({ deviceToken: referralDeviceToken }, { enabled: isAuthenticated });
@@ -63,6 +66,41 @@ export default function ProfilePage() {
     },
     onError: (error) => toast.error(error.message || "Unable to update your profile."),
   });
+
+  const updateAvatar = trpc.profile.updateAvatar.useMutation({
+    onSuccess: (profile) => {
+      utils.profile.me.setData(undefined, profile);
+      setAvatarPreview(null);
+      toast.success("Profile avatar updated.");
+    },
+    onError: (error) => {
+      setAvatarPreview(null);
+      toast.error(error.message || "Unable to update your avatar.");
+    },
+  });
+
+  const handleAvatarSelection = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    if (!(["image/jpeg", "image/png", "image/webp"] as const).includes(file.type as "image/jpeg" | "image/png" | "image/webp")) {
+      toast.error("Choose a JPG, PNG, or WebP image.");
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error("Avatar images must be 2 MB or smaller.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result !== "string") return;
+      setAvatarPreview(reader.result);
+      const base64 = reader.result.split(",", 2)[1] ?? "";
+      updateAvatar.mutate({ base64, mimeType: file.type as "image/jpeg" | "image/png" | "image/webp" });
+    };
+    reader.onerror = () => toast.error("Unable to read the selected image.");
+    reader.readAsDataURL(file);
+  };
 
   const applyReferral = trpc.referrals.applyCode.useMutation({
     onSuccess: (result) => {
@@ -147,13 +185,16 @@ export default function ProfilePage() {
         <Card className="card-gaming overflow-hidden">
           <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-4">
-              <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl border border-accent/40 bg-primary/15 text-2xl font-black text-accent shadow-[0_0_24px_rgba(255,184,0,0.18)]">
-                {getInitials(accountName)}
-              </div>
+              <input ref={avatarInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleAvatarSelection} />
+              <button type="button" className="group relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-accent/40 bg-primary/15 text-2xl font-black text-accent shadow-[0_0_24px_rgba(255,184,0,0.18)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-70" onClick={() => avatarInputRef.current?.click()} disabled={updateAvatar.isPending} aria-label="Upload or change profile avatar" title="Tap to change avatar">
+                {avatarPreview || profile.user.avatarUrl ? <img src={avatarPreview || profile.user.avatarUrl!} alt={`${accountName} avatar`} className="h-full w-full object-cover" /> : getInitials(accountName)}
+                <span className="absolute inset-x-0 bottom-0 flex h-7 items-center justify-center bg-background/80 text-primary opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">{updateAvatar.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}</span>
+              </button>
               <div>
                 <div className="mb-1 flex flex-wrap items-center gap-2"><h2 className="text-2xl font-black text-foreground">{accountName}</h2><ShieldCheck className="h-4 w-4 text-primary" /></div>
                 <p className="flex items-center gap-2 text-sm text-muted-foreground"><Mail className="h-4 w-4" />{profile.user.email || "Email unavailable"}</p>
-                <p className="mt-2 font-mono text-xs text-accent">UID: {profile.freeFireUid || "Not set"}</p>
+                <p className="mt-2 font-mono text-xs text-accent">UID: {profile.user.playerUid}</p>
+                <p className="mt-1 font-mono text-xs text-muted-foreground">Free Fire UID: {profile.freeFireUid || "Not set"}</p>
               </div>
             </div>
             <Button variant="outline" className="border-accent/40 text-accent hover:bg-accent/10" onClick={() => setEditing((value) => !value)}>

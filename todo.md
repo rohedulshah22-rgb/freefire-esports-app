@@ -399,3 +399,10 @@
 - [x] Reduce category-card padding while retaining icon, title, and View Matches action clarity
 - [x] Ensure all three categories fit within the initial Home viewport with a neat final-row placement
 - [x] Add regression coverage for compact grid structure and category interaction intent
+
+## Phase 62: Player Avatar and Numeric UID
+- [x] Add persistent avatar URL storage and an owner-only Profile upload contract
+- [x] Generate and persist a numeric player UID for every player profile when none exists
+- [x] Add tappable Profile avatar upload/edit interaction with safe image validation and preview
+- [x] Preserve editing and saving of the player’s Free Fire in-game UID through Edit Free Fire ID
+- [x] Add rollback-safe and UI-intent regression coverage for avatar ownership and numeric UID generation

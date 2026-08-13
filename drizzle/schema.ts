@@ -38,6 +38,8 @@ export const users = pgTable("users", {
   openId: varchar("openId", { length: 64 }).notNull().unique(),
   name: text("name"),
   email: varchar("email", { length: 320 }),
+  playerUid: varchar("playerUid", { length: 20 }).unique(),
+  avatarUrl: varchar("avatarUrl", { length: 512 }),
   freeFireName: varchar("freeFireName", { length: 64 }),
   freeFireUid: varchar("freeFireUid", { length: 32 }),
   loginMethod: varchar("loginMethod", { length: 64 }),

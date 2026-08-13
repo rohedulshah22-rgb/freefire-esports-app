@@ -41,6 +41,7 @@ import {
   processWithdrawalRequest,
   getPlayerProfile,
   updatePlayerProfile,
+  updatePlayerAvatar,
   attachPaymentAttemptOrder,
   createPaymentAttempt,
   getPaymentAttemptForUser,
@@ -113,6 +114,14 @@ export const appRouter = router({
       }))
       .mutation(async ({ ctx, input }) => {
         return updatePlayerProfile(ctx.user.id, input);
+      }),
+    updateAvatar: protectedProcedure
+      .input(z.object({
+        base64: z.string().min(1).max(3_000_000),
+        mimeType: z.enum(["image/jpeg", "image/png", "image/webp"]),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        return updatePlayerAvatar(ctx.user.id, input);
       }),
   }),
 
