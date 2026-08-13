@@ -12,6 +12,7 @@ import { getWalletActionPath } from "@/lib/walletNavigation";
 import { BRAND_LOGO_URL, BRAND_NAME } from "@/lib/brand";
 import { PlayerJoinForm } from "@/components/PlayerJoinForm";
 import { toast } from "sonner";
+import { getReferralDeviceToken } from "@/lib/referralDevice";
 
 /**
  * Compact multi-language UTR reminder displayed inside Wallet only.
@@ -111,9 +112,16 @@ function MatchCard({
   isJoined?: boolean;
 }) {
   const scheduledTime = new Date(match.match.scheduledStartTime);
-  const now = new Date();
-  const hoursUntilStart = Math.floor((scheduledTime.getTime() - now.getTime()) / (1000 * 60 * 60));
-  const minutesUntilStart = Math.floor(((scheduledTime.getTime() - now.getTime()) % (1000 * 60 * 60)) / (1000 * 60));
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = window.setInterval(() => setNowMs(Date.now()), 1_000);
+    return () => window.clearInterval(timer);
+  }, [match.match.scheduledStartTime]);
+  const remainingSeconds = Math.max(0, Math.floor((scheduledTime.getTime() - nowMs) / 1_000));
+  const hoursUntilStart = Math.floor(remainingSeconds / 3_600);
+  const minutesUntilStart = Math.floor((remainingSeconds % 3_600) / 60);
+  const secondsUntilStart = remainingSeconds % 60;
+  const countdownLabel = remainingSeconds === 0 ? "Starting now" : `${hoursUntilStart}h ${minutesUntilStart}m ${secondsUntilStart}s`;
 
   return (
     <Card className="card-gaming">
@@ -133,9 +141,7 @@ function MatchCard({
               minute: "2-digit",
             })}
           </p>
-          <p className="text-xs text-muted-foreground">
-            {hoursUntilStart}h {minutesUntilStart}m away
-          </p>
+          <Badge variant="outline" className="mt-2 border-accent/40 bg-accent/10 font-mono text-accent">Starts in {countdownLabel}</Badge>
           <p className="mt-1 font-semibold text-accent">
             Entry: {match.match.entryFee} Coins
           </p>
@@ -194,6 +200,12 @@ export default function Home() {
   const { data: joinedMatchIds = [] } = trpc.matches.getJoinedMatchIds.useQuery(undefined, {
     enabled: isAuthenticated,
   });
+  const registerDeviceMutation = trpc.security.registerDevice.useMutation();
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const deviceToken = getReferralDeviceToken();
+    if (deviceToken) registerDeviceMutation.mutate({ deviceToken });
+  }, [isAuthenticated]);
 
   // State for join form modal
   const [joinFormOpen, setJoinFormOpen] = useState(false);

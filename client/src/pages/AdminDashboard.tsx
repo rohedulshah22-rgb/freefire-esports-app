@@ -662,7 +662,7 @@ function AdminDashboardContent() {
   const { data: pendingWithdrawals = [] } = trpc.withdrawals.getPending.useQuery();
 
   // Fetch admin stats (active matches count)
-  const { data: adminStats = { activeMatches: 0, totalMatches: 0 } } = trpc.admin.getStats.useQuery();
+  const { data: adminStats = { activeMatches: 0, totalMatches: 0, totalApprovedDeposits: 0, totalCompletedWithdrawals: 0 } } = trpc.admin.getStats.useQuery();
 
   // Get trpc utils for cache invalidation
   const utils = trpc.useUtils();
@@ -800,6 +800,8 @@ function AdminDashboardContent() {
             </div>
           </Card>
         </div>
+
+        <Card className="card-gaming mb-6 border-primary/35 bg-gradient-to-r from-primary/10 via-background to-accent/10"><div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"><div><p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Financial Summary</p><h2 className="mt-1 text-lg font-bold text-foreground">Approved deposits vs completed withdrawals</h2></div><div className="grid grid-cols-2 gap-3"><div className="rounded-xl border border-primary/25 bg-primary/10 px-4 py-3"><p className="text-xs text-muted-foreground">Total Deposits</p><p className="mt-1 text-xl font-black text-primary">₹{adminStats.totalApprovedDeposits.toFixed(2)}</p></div><div className="rounded-xl border border-accent/30 bg-accent/10 px-4 py-3"><p className="text-xs text-muted-foreground">Total Withdrawals</p><p className="mt-1 text-xl font-black text-accent">₹{adminStats.totalCompletedWithdrawals.toFixed(2)}</p></div></div></div></Card>
 
         {/* Tabs */}
         <Tabs defaultValue="deposits" className="w-full">

@@ -56,6 +56,8 @@ import {
   getReferralDashboard,
   getReferralSettings,
   updateReferralSettings,
+  registerPlayerDevice,
+  getAdminFinancialSummary,
 } from "./db";
 import { ADMIN_PANEL_ACCESS_COOKIE_NAME, ADMIN_PANEL_ACCESS_MS, ADMIN_SESSION_COOKIE_NAME, COOKIE_NAME } from "@shared/const";
 import { TRPCError } from "@trpc/server";
@@ -173,6 +175,12 @@ export const appRouter = router({
         refereeBonusAmount: z.string().regex(/^\d+(?:\.\d{1,2})?$/, "Enter a valid referee reward"),
       }))
       .mutation(({ ctx, input }) => updateReferralSettings(ctx.user.id, input)),
+  }),
+
+  security: router({
+    registerDevice: protectedProcedure
+      .input(z.object({ deviceToken: z.string().trim().min(8).max(128) }))
+      .mutation(({ ctx, input }) => registerPlayerDevice(ctx.user.id, input.deviceToken, ctx.databaseOverride)),
   }),
 
   /**
@@ -589,11 +597,14 @@ export const appRouter = router({
           )
         );
 
+      const financialSummary = await getAdminFinancialSummary();
+
       console.log(`[Admin Stats] Active Matches: ${activeMatches.length}`);
 
       return {
         activeMatches: activeMatches.length,
         totalMatches: activeMatches.length,
+        ...financialSummary,
       };
     }),
 

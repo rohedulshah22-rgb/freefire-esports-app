@@ -425,3 +425,10 @@
 - [x] Make payout history records expandable with method, status, timestamp, and rejection-detail disclosure
 - [x] Convert Withdrawal FAQs into accessible collapsible accordion items
 - [x] Add regression coverage for content order and interactive disclosure intent
+
+## Phase 66: BooyahCraft Finishing Features
+- [x] Add live remaining-time countdowns to player match cards
+- [x] Add clear Per Kill and Win Prize breakdowns to match details
+- [x] Strengthen basic device-ID safeguards for account enrollment and referrals without blocking legitimate existing accounts
+- [x] Add an Admin Dashboard financial summary of total approved deposits and completed withdrawals
+- [x] Add regression coverage for timers, prize breakdowns, device safeguards, and financial-summary access

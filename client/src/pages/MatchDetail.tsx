@@ -136,6 +136,9 @@ export default function MatchDetailPage() {
   const roomCredentialsVisible = roomCredentialsQuery.data?.available === true;
   const roomAccessMessage = roomCredentialsQuery.error?.message
     || "Room details unlock 15 minutes before the match and are visible only after you join.";
+  const perKillAmount = Number(match.perKillReward);
+  const winPrizePool = Number(match.prizePool);
+  const winnerRule = match.category === "BR" ? "Top 5 ranks share the remaining pool" : "Rank 1 shares the remaining pool";
 
   return (
     <div className="min-h-screen bg-background">
@@ -243,13 +246,13 @@ export default function MatchDetailPage() {
                 Prize Distribution
               </h2>
               <div className="space-y-3">
-                <div className="flex items-center justify-between bg-accent/10 rounded-lg p-3">
-                  <span className="text-sm text-muted-foreground">Per Kill Reward</span>
-                  <span className="font-bold text-accent">₹2</span>
+                <div className="rounded-lg bg-accent/10 p-3">
+                  <div className="flex items-center justify-between gap-3"><span className="text-sm font-semibold text-muted-foreground">Per Kill</span><span className="font-bold text-accent">₹{perKillAmount.toFixed(2)} per confirmed kill</span></div>
+                  <p className="mt-1 text-xs text-muted-foreground">Each confirmed elimination adds this reward to your Winning Balance.</p>
                 </div>
-                <div className="flex items-center justify-between bg-primary/10 rounded-lg p-3">
-                  <span className="text-sm text-muted-foreground">Total Prize Pool</span>
-                  <span className="font-bold text-primary">₹{match.prizePool}</span>
+                <div className="rounded-lg bg-primary/10 p-3">
+                  <div className="flex items-center justify-between gap-3"><span className="text-sm font-semibold text-muted-foreground">Win Prize</span><span className="font-bold text-primary">₹{winPrizePool.toFixed(2)} prize pool</span></div>
+                  <p className="mt-1 text-xs text-muted-foreground">{winnerRule}. The final rank prize is the prize pool remaining after verified kill rewards.</p>
                 </div>
                 <div className="flex items-center justify-between bg-green-500/10 rounded-lg p-3">
                   <span className="text-sm text-muted-foreground">Top 5 Winners</span>

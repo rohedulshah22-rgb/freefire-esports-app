@@ -150,6 +150,32 @@ export async function getUserById(userId: number) {
   return result[0];
 }
 
+export async function registerPlayerDevice(
+  userId: number,
+  deviceToken: string,
+  databaseOverride?: WorkflowDatabase,
+) {
+  const deviceId = hashReferralSignal(deviceToken);
+  if (!deviceId) throw new Error("A valid device identifier is required");
+  return withinWorkflowTransaction(databaseOverride, async (tx) => {
+    const [player] = await tx.select({ id: users.id, deviceId: users.deviceId }).from(users)
+      .where(eq(users.id, userId)).limit(1).for("update");
+    if (!player) throw new Error("Player account not found");
+    if (player.deviceId === deviceId) return { sharedDevice: false, registered: false } as const;
+
+    const [existingDeviceOwner] = await tx.select({ id: users.id }).from(users)
+      .where(eq(users.deviceId, deviceId)).limit(1).for("update");
+    if (existingDeviceOwner && existingDeviceOwner.id !== userId) {
+      await captureReferralFraudSignals(userId, { deviceToken }, tx);
+      return { sharedDevice: true, registered: false } as const;
+    }
+
+    await tx.update(users).set({ deviceId, updatedAt: new Date() }).where(eq(users.id, userId));
+    await captureReferralFraudSignals(userId, { deviceToken }, tx);
+    return { sharedDevice: false, registered: true } as const;
+  });
+}
+
 export type ReferralFraudSignals = {
   deviceToken?: string | null;
   requestOrigin?: string | null;
@@ -886,6 +912,18 @@ export async function createDeposit(deposit: InsertDeposit, databaseOverride?: W
   if (!db) throw new Error("Neon database is not configured");
   const result = await db.insert(deposits).values(deposit).returning({ id: deposits.id });
   return result[0]!.id;
+}
+
+export async function getAdminFinancialSummary(databaseOverride?: WorkflowDatabase) {
+  const db = databaseOverride ?? await requireDb();
+  const [depositSummary, withdrawalSummary] = await Promise.all([
+    db.select({ total: sql<string>`COALESCE(SUM(${deposits.amount}) FILTER (WHERE ${deposits.status} = 'approved'), 0)::text` }).from(deposits),
+    db.select({ total: sql<string>`COALESCE(SUM(${withdrawals.amount}) FILTER (WHERE ${withdrawals.status} = 'completed'), 0)::text` }).from(withdrawals),
+  ]);
+  return {
+    totalApprovedDeposits: Number(depositSummary[0]?.total ?? 0),
+    totalCompletedWithdrawals: Number(withdrawalSummary[0]?.total ?? 0),
+  };
 }
 
 export async function createPaymentAttempt(
