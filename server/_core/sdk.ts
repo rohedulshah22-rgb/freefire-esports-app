@@ -1,4 +1,4 @@
-import { AXIOS_TIMEOUT_MS, COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
+import { ADMIN_PANEL_ACCESS_COOKIE_NAME, AXIOS_TIMEOUT_MS, COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
 import { ForbiddenError } from "@shared/_core/errors";
 import axios, { type AxiosInstance } from "axios";
 import { parse as parseCookieHeader } from "cookie";
@@ -252,10 +252,10 @@ class SDKServer {
     } as GetUserInfoWithJwtResponse;
   }
 
-  async authenticateRequest(req: Request): Promise<AuthenticatedUser> {
+  async authenticateRequest(req: Request, cookieName = COOKIE_NAME): Promise<AuthenticatedUser> {
     // Regular authentication flow
     const cookies = this.parseCookies(req.headers.cookie);
-    const sessionCookie = cookies.get(COOKIE_NAME);
+    const sessionCookie = cookies.get(cookieName);
     const session = await this.verifySession(sessionCookie);
 
     if (!session) {
@@ -307,6 +307,12 @@ class SDKServer {
     });
 
     return user;
+  }
+
+  async hasAdminPanelAccess(req: Request, ownerOpenId: string) {
+    const cookies = this.parseCookies(req.headers.cookie);
+    const accessSession = await this.verifySession(cookies.get(ADMIN_PANEL_ACCESS_COOKIE_NAME));
+    return accessSession?.openId === ownerOpenId;
   }
 }
 

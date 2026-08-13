@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -28,7 +27,7 @@ import {
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useLocation } from "wouter";
-import { getLoginUrl } from "@/const";
+import { getAdminLoginUrl } from "@/const";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import {
@@ -451,12 +450,12 @@ function UsersManagement() {
  */
 function AdminLogin({
   onLogin,
-  isAuthenticated,
+  ownerSignedIn,
   isCheckingAccess,
   hasServerAccess,
 }: {
   onLogin: () => void;
-  isAuthenticated: boolean;
+  ownerSignedIn: boolean;
   isCheckingAccess: boolean;
   hasServerAccess: boolean;
 }) {
@@ -465,15 +464,14 @@ function AdminLogin({
   const [error, setError] = useState("");
   const verifyCredentials = trpc.admin.verifyCredentials.useMutation({
     onSuccess: () => {
-      localStorage.setItem("adminLoggedIn", "true");
       onLogin();
     },
     onError: (mutationError) => setError(mutationError.message || "Invalid credentials"),
   });
 
   const handleLogin = () => {
-    if (!isAuthenticated) {
-      window.location.href = getLoginUrl();
+    if (!ownerSignedIn) {
+      window.location.href = getAdminLoginUrl();
       return;
     }
     if (isCheckingAccess) {
@@ -529,7 +527,7 @@ function AdminLogin({
             onClick={handleLogin}
             disabled={isCheckingAccess || verifyCredentials.isPending}
           >
-            {!isAuthenticated ? "Sign In With Owner Account" : isCheckingAccess ? "Checking Access..." : verifyCredentials.isPending ? "Verifying Credentials..." : "Login to Dashboard"}
+            {!ownerSignedIn ? "Sign In With Owner Account" : isCheckingAccess ? "Checking Access..." : verifyCredentials.isPending ? "Verifying Credentials..." : "Login to Dashboard"}
           </Button>
         </div>
 
@@ -546,7 +544,7 @@ function AdminLogin({
  */
 function AdminDashboardContent() {
   const [, setLocation] = useLocation();
-  const { logout } = useAuth();
+  const adminLogout = trpc.admin.logout.useMutation();
   const [resultParticipantId, setResultParticipantId] = useState("");
   const [resultKillCount, setResultKillCount] = useState("");
   const [resultRank, setResultRank] = useState("");
@@ -631,9 +629,7 @@ function AdminDashboardContent() {
   }, [utils]);
 
   const handleLogout = () => {
-    localStorage.removeItem("adminLoggedIn");
-    logout();
-    setLocation("/");
+    adminLogout.mutate(undefined, { onSettled: () => setLocation("/admin-panel-secret-access") });
   };
 
   return (
@@ -896,25 +892,23 @@ function AdminDashboardContent() {
  * Admin Dashboard Page with authentication
  */
 export default function AdminDashboard() {
-  const { isAuthenticated, loading } = useAuth();
-  const [isLoggedIn, setIsLoggedIn] = useState(
-    localStorage.getItem("adminLoggedIn") === "true"
-  );
-  const adminAuthorization = trpc.admin.authorize.useQuery(undefined, {
-    enabled: isAuthenticated,
-    retry: false,
-  });
+  const adminSession = trpc.admin.session.useQuery(undefined, { retry: false });
+  const [credentialsVerified, setCredentialsVerified] = useState(false);
 
-  if (loading) {
+  if (adminSession.isLoading) {
     return <div className="min-h-screen bg-background" />;
   }
 
-  if (!isLoggedIn || !adminAuthorization.data?.authorized) {
+  const hasServerAccess = credentialsVerified || adminSession.data?.credentialsVerified === true;
+  if (!hasServerAccess) {
     return <AdminLogin
-      onLogin={() => setIsLoggedIn(true)}
-      isAuthenticated={isAuthenticated}
-      isCheckingAccess={adminAuthorization.isLoading}
-      hasServerAccess={adminAuthorization.data?.authorized === true}
+      onLogin={() => {
+        setCredentialsVerified(true);
+        adminSession.refetch();
+      }}
+      ownerSignedIn={adminSession.data?.ownerSignedIn === true}
+      isCheckingAccess={adminSession.isFetching}
+      hasServerAccess={adminSession.data?.ownerSignedIn === true}
     />;
   }
 

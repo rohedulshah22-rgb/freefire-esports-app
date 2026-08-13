@@ -1,8 +1,9 @@
-import { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
+import { ADMIN_PANEL_ACCESS_COOKIE_NAME, ADMIN_SESSION_COOKIE_NAME, COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
 import type { Express, Request, Response } from "express";
 import * as db from "../db";
 import { getSessionCookieOptions } from "./cookies";
 import { sdk } from "./sdk";
+import { ADMIN_OWNER_EMAIL } from "../adminAccess";
 
 function getQueryParam(req: Request, key: string): string | undefined {
   const value = req.query[key];
@@ -10,7 +11,11 @@ function getQueryParam(req: Request, key: string): string | undefined {
 }
 
 export function registerOAuthRoutes(app: Express) {
-  app.get("/api/oauth/callback", async (req: Request, res: Response) => {
+  const handleCallback = async (
+    req: Request,
+    res: Response,
+    options: { cookieName: string; redirectPath: string; requireOwnerEmail?: boolean },
+  ) => {
     const code = getQueryParam(req, "code");
     const state = getQueryParam(req, "state");
 
@@ -28,6 +33,14 @@ export function registerOAuthRoutes(app: Express) {
         return;
       }
 
+      if (options.requireOwnerEmail && userInfo.email?.trim().toLowerCase() !== ADMIN_OWNER_EMAIL) {
+        const cookieOptions = getSessionCookieOptions(req);
+        res.clearCookie(ADMIN_SESSION_COOKIE_NAME, cookieOptions);
+        res.clearCookie(ADMIN_PANEL_ACCESS_COOKIE_NAME, cookieOptions);
+        res.redirect(302, `${options.redirectPath}?authError=owner-account-required`);
+        return;
+      }
+
       await db.upsertUser({
         openId: userInfo.openId,
         name: userInfo.name || null,
@@ -42,12 +55,25 @@ export function registerOAuthRoutes(app: Express) {
       });
 
       const cookieOptions = getSessionCookieOptions(req);
-      res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
+      res.cookie(options.cookieName, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
+      if (options.requireOwnerEmail) {
+        res.clearCookie(ADMIN_PANEL_ACCESS_COOKIE_NAME, cookieOptions);
+      }
 
-      res.redirect(302, "/");
+      res.redirect(302, options.redirectPath);
     } catch (error) {
       console.error("[OAuth] Callback failed", error);
       res.status(500).json({ error: "OAuth callback failed" });
     }
-  });
+  };
+
+  app.get("/api/oauth/callback", (req, res) => handleCallback(req, res, {
+    cookieName: COOKIE_NAME,
+    redirectPath: "/",
+  }));
+  app.get("/api/admin/oauth/callback", (req, res) => handleCallback(req, res, {
+    cookieName: ADMIN_SESSION_COOKIE_NAME,
+    redirectPath: "/admin-panel-secret-access",
+    requireOwnerEmail: true,
+  }));
 }

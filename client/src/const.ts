@@ -1,10 +1,10 @@
 export { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
 
 // Generate login URL at runtime so redirect URI reflects the current origin.
-export const getLoginUrl = (options?: { switchAccount?: boolean }) => {
+export const getLoginUrl = (options?: { switchAccount?: boolean; callbackPath?: string }) => {
   const oauthPortalUrl = import.meta.env.VITE_OAUTH_PORTAL_URL;
   const appId = import.meta.env.VITE_APP_ID;
-  const redirectUri = `${window.location.origin}/api/oauth/callback`;
+  const redirectUri = `${window.location.origin}${options?.callbackPath ?? "/api/oauth/callback"}`;
   const state = btoa(redirectUri);
 
   const url = new URL(`${oauthPortalUrl}/app-auth`);
@@ -16,3 +16,8 @@ export const getLoginUrl = (options?: { switchAccount?: boolean }) => {
 
   return url.toString();
 };
+
+export const getAdminLoginUrl = () => getLoginUrl({
+  callbackPath: "/api/admin/oauth/callback",
+  switchAccount: true,
+});

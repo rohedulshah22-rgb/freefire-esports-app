@@ -316,3 +316,9 @@
 ## Phase 47: UTR Input Contract Alignment
 - [x] Update the Deposit page UTR field to accept exactly 12 numeric digits
 - [x] Add a regression test that keeps frontend UTR constraints aligned with server validation
+
+## Phase 48: Admin Owner Session Isolation
+- [x] Audit the Admin Panel OAuth entry and callback behavior when a player session already exists
+- [x] Create an isolated owner-account sign-in entry that avoids player-session callback conflicts
+- [x] Require the owner email and server-verified Admin Panel credentials before rendering dashboard data
+- [x] Add regression coverage for owner-only Admin Panel authorization and session-safe login intent

@@ -5,7 +5,7 @@ import { httpBatchLink, TRPCClientError } from "@trpc/client";
 import { createRoot } from "react-dom/client";
 import superjson from "superjson";
 import App from "./App";
-import { getLoginUrl } from "./const";
+import { getAdminLoginUrl, getLoginUrl } from "./const";
 import "./index.css";
 
 const queryClient = new QueryClient();
@@ -18,7 +18,7 @@ const redirectToLoginIfUnauthorized = (error: unknown) => {
 
   if (!isUnauthorized) return;
 
-  window.location.href = getLoginUrl();
+  window.location.href = window.location.pathname === "/admin-panel-secret-access" ? getAdminLoginUrl() : getLoginUrl();
 };
 
 queryClient.getQueryCache().subscribe(event => {
@@ -43,8 +43,12 @@ const trpcClient = trpc.createClient({
       url: "/api/trpc",
       transformer: superjson,
       fetch(input, init) {
+        const isAdminPath = window.location.pathname === "/admin-panel-secret-access";
+        const headers = new Headers(init?.headers);
+        if (isAdminPath) headers.set("x-admin-session", "true");
         return globalThis.fetch(input, {
           ...(init ?? {}),
+          headers,
           credentials: "include",
         });
       },

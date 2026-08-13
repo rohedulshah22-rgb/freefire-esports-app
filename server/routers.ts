@@ -45,19 +45,28 @@ import {
   createPaymentAttempt,
   getPaymentAttemptForUser,
 } from "./db";
-import { COOKIE_NAME } from "@shared/const";
+import { ADMIN_PANEL_ACCESS_COOKIE_NAME, ADMIN_PANEL_ACCESS_MS, ADMIN_SESSION_COOKIE_NAME, COOKIE_NAME } from "@shared/const";
 import { TRPCError } from "@trpc/server";
 import { ENV } from "./_core/env";
 import { randomUUID } from "node:crypto";
 import { createRazorpayOrder, getRazorpayReadiness } from "./razorpay";
+import { isOwnerAdminUser } from "./adminAccess";
+import { sdk } from "./_core/sdk";
 
 /**
  * Admin-only procedure - checks if user is authenticated
  * (Role-based checks are done at login level in AdminDashboard)
  */
-const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
-  if (ctx.user.role !== "admin" && ctx.user.openId !== ENV.ownerOpenId) {
+const ownerAdminProcedure = protectedProcedure.use(({ ctx, next }) => {
+  if (!isOwnerAdminUser(ctx.user)) {
     throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required" });
+  }
+  return next();
+});
+
+const adminProcedure = ownerAdminProcedure.use(({ ctx, next }) => {
+  if (!ctx.adminPanelAuthorized) {
+    throw new TRPCError({ code: "UNAUTHORIZED", message: "Admin Panel credentials must be verified" });
   }
   return next();
 });
@@ -432,9 +441,14 @@ export const appRouter = router({
    * ADMIN OPERATIONS
    */
   admin: router({
+    session: publicProcedure.query(({ ctx }) => ({
+      ownerSignedIn: isOwnerAdminUser(ctx.user),
+      credentialsVerified: isOwnerAdminUser(ctx.user) && ctx.adminPanelAuthorized,
+    })),
+
     authorize: adminProcedure.query(() => ({ authorized: true })),
 
-    verifyCredentials: adminProcedure
+    verifyCredentials: ownerAdminProcedure
       .input(z.object({ username: z.string().min(1).max(64), password: z.string().min(1).max(256) }))
       .mutation(async ({ ctx, input }) => {
         if (!ctx.user.email) {
@@ -450,8 +464,18 @@ export const appRouter = router({
         if (!credential?.adminPasswordHash || !verifyAdminPassword(input.password, credential.adminPasswordHash)) {
           throw new TRPCError({ code: "UNAUTHORIZED", message: "Invalid administrator credentials" });
         }
+        const accessToken = await sdk.createSessionToken(ctx.user.openId, { expiresInMs: ADMIN_PANEL_ACCESS_MS });
+        const cookieOptions = getSessionCookieOptions(ctx.req);
+        ctx.res.cookie(ADMIN_PANEL_ACCESS_COOKIE_NAME, accessToken, { ...cookieOptions, maxAge: ADMIN_PANEL_ACCESS_MS });
         return { verified: true };
       }),
+
+    logout: publicProcedure.mutation(({ ctx }) => {
+      const cookieOptions = getSessionCookieOptions(ctx.req);
+      ctx.res.clearCookie(ADMIN_SESSION_COOKIE_NAME, cookieOptions);
+      ctx.res.clearCookie(ADMIN_PANEL_ACCESS_COOKIE_NAME, cookieOptions);
+      return { success: true } as const;
+    }),
 
     getStats: adminProcedure.query(async () => {
       const db = await getDb();
