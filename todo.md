@@ -386,3 +386,10 @@
 - [x] Add clear responsive separation between the BooyahCraft brand block and Ranks/Profile actions
 - [x] Ensure Welcome and signed-in identity text uses responsive sizing and wrapping without truncation
 - [x] Add regression coverage for non-overlapping navigation and readable player identity intent
+
+## Phase 60: Home Screen UX Reorganization
+- [x] Place Match Categories immediately below the Player Header as the primary Home entry point
+- [x] Place the Wallet Balance card directly after Match Categories
+- [x] Replace the large Home UTR banner with a compact wallet-focused notice
+- [x] Move the Refer & Earn banner to the bottom of the default Home screen
+- [x] Add regression coverage for the revised Home content order and wallet notice intent

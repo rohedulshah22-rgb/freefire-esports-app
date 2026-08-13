@@ -14,9 +14,9 @@ import { PlayerJoinForm } from "@/components/PlayerJoinForm";
 import { toast } from "sonner";
 
 /**
- * Multi-language UTR warning component
+ * Compact multi-language UTR reminder displayed inside Wallet only.
  */
-function UTRWarning() {
+function WalletUTRReminder() {
   const [language, setLanguage] = useState<"en" | "bn" | "hi">("en");
 
   const warnings = {
@@ -43,39 +43,27 @@ function UTRWarning() {
   const current = warnings[language];
 
   return (
-    <div className="mb-6 rounded-lg border-l-4 border-primary bg-primary/10 p-4">
-      <div className="mb-3 flex items-center gap-2">
-        <AlertCircle className="h-5 w-5 text-primary" />
-        <h3 className="font-bold text-primary">{current.title}</h3>
+    <div className="mt-4 rounded-lg border border-primary/30 bg-primary/5 p-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex min-w-0 items-center gap-2"><AlertCircle className="h-4 w-4 shrink-0 text-primary" /><div><p className="text-xs font-bold text-primary">{current.title}</p><p className="mt-0.5 text-xs text-muted-foreground">{current.message}</p></div></div>
+        <div className="flex shrink-0 gap-1">
+          {(["en", "bn", "hi"] as const).map((lang) => (
+            <button key={lang} onClick={() => setLanguage(lang)} className={`rounded px-1.5 py-1 text-[10px] font-semibold transition-all ${language === lang ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}>{lang === "en" ? "EN" : lang === "bn" ? "BN" : "HI"}</button>
+          ))}
+        </div>
       </div>
-      <p className="mb-2 font-semibold text-foreground">{current.message}</p>
-      <p className="mb-3 text-sm text-muted-foreground">{current.instruction}</p>
-      <div className="flex gap-2">
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+        <p className="text-[11px] leading-relaxed text-muted-foreground">{current.instruction}</p>
         <Button
           size="sm"
           variant="outline"
+          className="h-7 border-primary/35 px-2 text-xs text-primary hover:bg-primary/10"
           onClick={() => {
-            // Show UTR guide modal
             alert("How to find UTR:\n1. Check your bank SMS/email\n2. Look for 12-digit number starting with UTR\n3. Copy and paste in wallet");
           }}
         >
           {current.button}
         </Button>
-        <div className="flex gap-1">
-          {(["en", "bn", "hi"] as const).map((lang) => (
-            <button
-              key={lang}
-              onClick={() => setLanguage(lang)}
-              className={`rounded px-2 py-1 text-xs font-semibold transition-all ${
-                language === lang
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted text-muted-foreground hover:bg-muted/80"
-              }`}
-            >
-              {lang === "en" ? "EN" : lang === "bn" ? "BN" : "HI"}
-            </button>
-          ))}
-        </div>
       </div>
     </div>
   );
@@ -283,52 +271,10 @@ export default function Home() {
 
       {/* Main Content */}
       <div className="mx-auto max-w-4xl px-4 py-6">
-        {/* UTR Warning */}
-        <UTRWarning />
-
-        <Card className="card-gaming mb-6 overflow-hidden border-accent/35 bg-gradient-to-r from-primary/15 via-background to-accent/10">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-start gap-3"><div className="rounded-xl border border-accent/35 bg-accent/10 p-3"><Gift className="h-6 w-6 text-accent" /></div><div><div className="flex flex-wrap items-center gap-2"><h2 className="text-lg font-black text-accent">Refer & Earn</h2><Badge className="border-primary/35 bg-primary/10 text-primary">Dual Bonus Rewards</Badge></div><p className="mt-1 max-w-xl text-sm text-muted-foreground">Invite a friend, help them complete their first valid match join, and both of you receive Bonus Coins.</p></div></div>
-            <Button className="btn-neon shrink-0" onClick={() => { window.location.href = "/profile#refer-earn"; }}>Open Refer & Earn <ArrowRight className="ml-2 h-4 w-4" /></Button>
-          </div>
-        </Card>
-
-        {/* Wallet Overview */}
-        {wallet && (
-          <Card className="card-gaming mb-6">
-            <div className="flex items-center gap-3 mb-4">
-              <Wallet className="h-5 w-5 text-accent" />
-              <h2 className="text-lg font-bold">Wallet Balance</h2>
-            </div>
-            <div className="grid grid-cols-3 gap-4">
-              <div className="rounded-lg bg-primary/10 p-3">
-                <p className="text-xs text-muted-foreground mb-1">Deposit</p>
-                <p className="text-xl font-bold text-primary">{wallet.depositBalance}</p>
-              </div>
-              <div className="rounded-lg bg-accent/10 p-3">
-                <p className="text-xs text-muted-foreground mb-1">Winning</p>
-                <p className="text-xl font-bold text-accent">{wallet.winningBalance}</p>
-              </div>
-              <div className="rounded-lg bg-secondary/10 p-3">
-                <p className="text-xs text-muted-foreground mb-1">Bonus</p>
-                <p className="text-xl font-bold text-secondary">{wallet.bonusBalance}</p>
-              </div>
-            </div>
-            <div className="mt-4 flex gap-2">
-              <Button variant="outline" className="flex-1" onClick={() => { window.location.href = getWalletActionPath("add-money"); }}>
-                Add Money
-              </Button>
-              <Button variant="outline" className="flex-1" onClick={() => { window.location.href = getWalletActionPath("withdraw"); }}>
-                Withdraw
-              </Button>
-            </div>
-          </Card>
-        )}
-
-        {/* Match Categories */}
-        {!selectedCategory ? (
+        <section className="mb-6" aria-labelledby="match-categories-heading">
+          {!selectedCategory ? (
           <div>
-            <h2 className="mb-4 text-2xl font-bold">Select Match Category</h2>
+            <h2 id="match-categories-heading" className="mb-4 text-2xl font-bold">Select Match Category</h2>
             <div className="grid gap-4 sm:grid-cols-3">
               {categories.map((category) => (
                 <MatchCategoryCard
@@ -339,7 +285,7 @@ export default function Home() {
               ))}
             </div>
           </div>
-        ) : (
+          ) : (
           <div>
             {/* Back button */}
             <Button
@@ -397,7 +343,21 @@ export default function Home() {
               )}
             </div>
           </div>
+          )}
+        </section>
+
+        {wallet && (
+          <Card className="card-gaming mb-6">
+            <div className="mb-4 flex items-center gap-3"><Wallet className="h-5 w-5 text-accent" /><h2 className="text-lg font-bold">Wallet Balance</h2></div>
+            <div className="grid grid-cols-3 gap-3 sm:gap-4"><div className="rounded-lg bg-primary/10 p-3"><p className="mb-1 text-xs text-muted-foreground">Deposit</p><p className="text-xl font-bold text-primary">{wallet.depositBalance}</p></div><div className="rounded-lg bg-accent/10 p-3"><p className="mb-1 text-xs text-muted-foreground">Winning</p><p className="text-xl font-bold text-accent">{wallet.winningBalance}</p></div><div className="rounded-lg bg-secondary/10 p-3"><p className="mb-1 text-xs text-muted-foreground">Bonus</p><p className="text-xl font-bold text-secondary">{wallet.bonusBalance}</p></div></div>
+            <div className="mt-4 flex gap-2"><Button variant="outline" className="flex-1" onClick={() => { window.location.href = getWalletActionPath("add-money"); }}>Add Money</Button><Button variant="outline" className="flex-1" onClick={() => { window.location.href = getWalletActionPath("withdraw"); }}>Withdraw</Button></div>
+            <WalletUTRReminder />
+          </Card>
         )}
+
+        <Card className="card-gaming mb-6 overflow-hidden border-accent/35 bg-gradient-to-r from-primary/15 via-background to-accent/10">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"><div className="flex items-start gap-3"><div className="rounded-xl border border-accent/35 bg-accent/10 p-3"><Gift className="h-6 w-6 text-accent" /></div><div><div className="flex flex-wrap items-center gap-2"><h2 className="text-lg font-black text-accent">Refer & Earn</h2><Badge className="border-primary/35 bg-primary/10 text-primary">Dual Bonus Rewards</Badge></div><p className="mt-1 max-w-xl text-sm text-muted-foreground">Invite a friend, help them complete their first valid match join, and both of you receive Bonus Coins.</p></div></div><Button className="btn-neon shrink-0" onClick={() => { window.location.href = "/profile#refer-earn"; }}>Open Refer & Earn <ArrowRight className="ml-2 h-4 w-4" /></Button></div>
+        </Card>
       </div>
 
       {/* Player Join Form Modal */}
