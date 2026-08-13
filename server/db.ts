@@ -111,9 +111,9 @@ export async function upsertUser(user: InsertUser): Promise<void> {
   }).onConflictDoUpdate({
     target: users.openId,
     set: {
-      name: user.name ?? null,
-      email: user.email ?? null,
-      loginMethod: user.loginMethod ?? null,
+      name: user.name ?? sql`${users.name}`,
+      email: user.email ?? sql`${users.email}`,
+      loginMethod: user.loginMethod ?? sql`${users.loginMethod}`,
       role: shouldBeAdmin ? "admin" : sql`${users.role}`,
       lastSignedIn,
       updatedAt: new Date(),

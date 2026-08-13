@@ -1,5 +1,6 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
+import { ADMIN_PANEL_LOGIN_PATH, canOpenAdminPanel } from "@/lib/adminNavigation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -81,6 +82,7 @@ export default function ProfilePage() {
   const profile = profileQuery.data;
   const accountName = profile.user.name || user?.name || "Free Fire Player";
   const totalEarnings = Number(profile.totalEarnings || 0).toFixed(2);
+  const canAccessAdminPanel = canOpenAdminPanel(profile.user.email);
 
   return (
     <main className="min-h-screen bg-background pb-24">
@@ -135,6 +137,15 @@ export default function ProfilePage() {
           <h2 className="mb-1 text-lg font-bold">Account Actions</h2>
           <p className="mb-4 text-sm text-muted-foreground">Logout clears only this app session. Switch Account immediately opens the sign-in screen without clearing browser or app data.</p>
           <div className="grid gap-3 sm:grid-cols-2">
+            {canAccessAdminPanel && (
+              <Button
+                variant="outline"
+                className="border-accent/40 text-accent hover:bg-accent/10 sm:col-span-2"
+                onClick={() => setLocation(ADMIN_PANEL_LOGIN_PATH)}
+              >
+                <ShieldCheck className="mr-2 h-4 w-4" />Admin Panel
+              </Button>
+            )}
             <Button variant="outline" className="border-primary/40 text-primary hover:bg-primary/10" onClick={() => void handleExit(true)}><SwitchCamera className="mr-2 h-4 w-4" />Switch Account</Button>
             <Button variant="outline" className="border-destructive/40 text-destructive hover:bg-destructive/10" onClick={() => void handleExit(false)}><LogOut className="mr-2 h-4 w-4" />Logout</Button>
           </div>
