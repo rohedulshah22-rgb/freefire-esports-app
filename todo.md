@@ -439,3 +439,9 @@
 - [x] Preserve Entry Fee, Total Prize Pool, and Per-Kill Reward creation controls with validated numeric inputs
 - [x] Render custom mode badges and rule summaries dynamically on player match cards and details
 - [x] Add regression coverage for match metadata persistence, Admin profit preview, and player rendering intent
+
+## Phase 68: Player Match Sub-Category Filters
+- [x] Define category-specific sub-category mappings for BR, CS, and Lone Wolf
+- [x] Render responsive sub-category tabs alongside the existing primary match-mode filters
+- [x] Filter the current category and mode match list by the selected custom game-mode tag
+- [x] Add regression coverage for mappings, tab interaction intent, and tag-based filtering

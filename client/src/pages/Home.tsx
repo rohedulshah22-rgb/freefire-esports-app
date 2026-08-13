@@ -13,6 +13,7 @@ import { BRAND_LOGO_URL, BRAND_NAME } from "@/lib/brand";
 import { PlayerJoinForm } from "@/components/PlayerJoinForm";
 import { toast } from "sonner";
 import { getReferralDeviceToken } from "@/lib/referralDevice";
+import { getMatchSubcategoryFilters, matchesSelectedSubcategory } from "@/lib/matchSubcategories";
 
 /**
  * Compact multi-language UTR reminder displayed inside Wallet only.
@@ -169,6 +170,7 @@ export default function Home() {
   const welcomeIdentity = getWelcomeIdentity(user);
   const [selectedCategory, setSelectedCategory] = useState<number | undefined>(undefined);
   const [selectedMode, setSelectedMode] = useState<number | undefined>(undefined);
+  const [selectedSubcategory, setSelectedSubcategory] = useState<string | undefined>(undefined);
 
   // Initialize match data
   const initializeMutation = trpc.matches.initializeData.useMutation();
@@ -194,6 +196,9 @@ export default function Home() {
     },
     { enabled: !!selectedCategory }
   );
+  const selectedCategoryName = categories.find((category) => category.id === selectedCategory)?.name;
+  const subcategoryFilters = getMatchSubcategoryFilters(selectedCategoryName);
+  const filteredUpcomingMatches = upcomingMatches.filter((match) => matchesSelectedSubcategory(match.match.customModeTag, selectedSubcategory));
 
   // Fetch wallet
   const { data: wallet } = trpc.wallet.getBalance.useQuery(undefined, {
@@ -293,7 +298,11 @@ export default function Home() {
                 <MatchCategoryCard
                   key={category.id}
                   category={category}
-                  onSelect={setSelectedCategory}
+                  onSelect={(categoryId) => {
+                    setSelectedCategory(categoryId);
+                    setSelectedMode(undefined);
+                    setSelectedSubcategory(undefined);
+                  }}
                   className={categories.length % 2 === 1 && index === categories.length - 1 ? "col-span-2 mx-auto w-[calc(50%-0.375rem)]" : ""}
                 />
               ))}
@@ -308,6 +317,7 @@ export default function Home() {
               onClick={() => {
                 setSelectedCategory(undefined);
                 setSelectedMode(undefined);
+                setSelectedSubcategory(undefined);
               }}
             >
               ← Back to Categories
@@ -333,12 +343,45 @@ export default function Home() {
               </div>
             )}
 
+            {subcategoryFilters.length > 0 && (
+              <div className="mb-6" aria-labelledby="match-subcategories-heading">
+                <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+                  <h2 id="match-subcategories-heading" className="text-lg font-bold">Game Sub-Category</h2>
+                  <p className="text-xs text-muted-foreground">Choose a special game rule</p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    aria-pressed={!selectedSubcategory}
+                    onClick={() => setSelectedSubcategory(undefined)}
+                    className={`rounded-md border px-3 py-2 text-xs font-bold transition-all active:scale-[0.97] ${!selectedSubcategory ? "border-primary bg-primary text-primary-foreground shadow-[0_0_14px_rgba(255,0,80,0.3)]" : "border-primary/30 bg-card text-muted-foreground hover:border-primary/60 hover:text-primary"}`}
+                  >
+                    All
+                  </button>
+                  {subcategoryFilters.map((subcategory) => {
+                    const isSelected = selectedSubcategory === subcategory;
+                    return (
+                      <button
+                        key={subcategory}
+                        type="button"
+                        aria-pressed={isSelected}
+                        onClick={() => setSelectedSubcategory(subcategory)}
+                        className={`rounded-md border px-3 py-2 text-xs font-bold transition-all active:scale-[0.97] ${isSelected ? "border-accent bg-accent/15 text-accent shadow-[0_0_14px_rgba(255,184,0,0.18)]" : "border-accent/25 bg-card text-muted-foreground hover:border-accent/60 hover:text-accent"}`}
+                      >
+                        {subcategory}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             {/* Upcoming Matches */}
             <div>
-              <h2 className="mb-4 text-lg font-bold">Upcoming Matches</h2>
-              {upcomingMatches.length > 0 ? (
+              <h2 className="mb-4 text-lg font-bold">{selectedSubcategory ? `${selectedSubcategory} Matches` : "Upcoming Matches"}</h2>
+              {filteredUpcomingMatches.length > 0 ? (
                 <div className="space-y-3">
-                  {upcomingMatches.map((match) => {
+                  {filteredUpcomingMatches.map((match) => {
                     const isJoined = joinedMatchIds.includes(match.match.id);
                     return (
                       <MatchCard
@@ -352,7 +395,7 @@ export default function Home() {
                 </div>
               ) : (
                 <Card className="card-gaming text-center py-8">
-                  <p className="text-muted-foreground">No matches available in this time slot</p>
+                  <p className="text-muted-foreground">{selectedSubcategory ? `No ${selectedSubcategory} matches are available right now` : "No matches available in this time slot"}</p>
                 </Card>
               )}
             </div>
