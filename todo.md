@@ -337,3 +337,11 @@
 - [x] Make the owner-visible Profile Admin badge route to the isolated Admin login page
 - [x] Make the owner-visible Profile Admin Panel action route on tap or click
 - [x] Add regression coverage for both interactive Admin controls
+
+## Phase 52: Player Leaderboard and Admin Cycle Management
+- [x] Define Neon-backed leaderboard settings, weekly-cycle state, and reward configuration
+- [x] Add secure ranking APIs for kills, earnings, matches, and Daily/Weekly/All-Time periods
+- [x] Add owner-admin reward configuration and manual weekly-cycle reset controls
+- [x] Build the Player Leaderboard page with podium cards, rank badges, filters, stats previews, and personal rank bar
+- [x] Add a Player App navigation path to the Leaderboard page
+- [x] Add deterministic coverage for ranking, period boundaries, owner-only management, and UI navigation intent

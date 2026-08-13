@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { AlertCircle, Zap, Users, Trophy, Wallet, UserRound } from "lucide-react";
+import { AlertCircle, Zap, Users, Trophy, Wallet, UserRound, Medal } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useState, useEffect } from "react";
 import { getLoginUrl } from "@/const";
@@ -276,9 +276,7 @@ export default function Home() {
             <h1 className="mb-1 text-3xl font-bold text-accent">Welcome{welcomeIdentity ? `, ${welcomeIdentity}` : ""}</h1>
             <p className="text-muted-foreground">{user?.email ? `Signed in as ${user.email}` : "Ready to compete?"}</p>
           </div>
-          <Button variant="outline" className="shrink-0 border-accent/40 text-accent hover:bg-accent/10" onClick={() => { window.location.href = "/profile"; }}>
-            <UserRound className="mr-2 h-4 w-4" />Profile
-          </Button>
+          <div className="flex shrink-0 gap-2"><Button variant="outline" size="sm" className="border-primary/40 text-primary hover:bg-primary/10" onClick={() => { window.location.href = "/leaderboard"; }}><Medal className="mr-1.5 h-4 w-4" />Ranks</Button><Button variant="outline" size="sm" className="border-accent/40 text-accent hover:bg-accent/10" onClick={() => { window.location.href = "/profile"; }}><UserRound className="mr-1.5 h-4 w-4" />Profile</Button></div>
         </div>
       </div>
 

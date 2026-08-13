@@ -44,6 +44,10 @@ import {
   attachPaymentAttemptOrder,
   createPaymentAttempt,
   getPaymentAttemptForUser,
+  getLeaderboard,
+  getLeaderboardSettings,
+  resetLeaderboardWeeklyCycle,
+  updateLeaderboardRewards,
 } from "./db";
 import { ADMIN_PANEL_ACCESS_COOKIE_NAME, ADMIN_PANEL_ACCESS_MS, ADMIN_SESSION_COOKIE_NAME, COOKIE_NAME } from "@shared/const";
 import { TRPCError } from "@trpc/server";
@@ -99,6 +103,31 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }) => {
         return updatePlayerProfile(ctx.user.id, input);
       }),
+  }),
+
+  leaderboard: router({
+    getBoard: protectedProcedure
+      .input(z.object({
+        metric: z.enum(["kills", "earnings", "matches"]),
+        period: z.enum(["daily", "weekly", "all"]),
+      }))
+      .query(({ ctx, input }) => getLeaderboard(ctx.user.id, input)),
+
+    getSettings: protectedProcedure.query(() => getLeaderboardSettings()),
+
+    adminSettings: adminProcedure.query(() => getLeaderboardSettings()),
+
+    updateRewards: adminProcedure
+      .input(z.object({
+        top1Reward: z.string().regex(/^\d+(?:\.\d{1,2})?$/, "Enter a valid first-place reward"),
+        top2Reward: z.string().regex(/^\d+(?:\.\d{1,2})?$/, "Enter a valid second-place reward"),
+        top3Reward: z.string().regex(/^\d+(?:\.\d{1,2})?$/, "Enter a valid third-place reward"),
+        proLegendLabel: z.string().trim().min(2).max(64),
+      }))
+      .mutation(({ ctx, input }) => updateLeaderboardRewards(ctx.user.id, input)),
+
+    resetWeeklyCycle: adminProcedure
+      .mutation(({ ctx }) => resetLeaderboardWeeklyCycle(ctx.user.id)),
   }),
 
   /**

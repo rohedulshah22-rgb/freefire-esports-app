@@ -203,6 +203,18 @@ export const adminAuditLog = pgTable("adminAuditLog", {
   createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
 });
 
+/** Singleton configuration for leaderboard reward copy and the current weekly period. */
+export const leaderboardSettings = pgTable("leaderboardSettings", {
+  id: integer("id").primaryKey(),
+  weeklyCycleStartedAt: timestamp("weeklyCycleStartedAt", { withTimezone: true }).defaultNow().notNull(),
+  top1Reward: numeric("top1Reward", { precision: 12, scale: 2 }).default("0").notNull(),
+  top2Reward: numeric("top2Reward", { precision: 12, scale: 2 }).default("0").notNull(),
+  top3Reward: numeric("top3Reward", { precision: 12, scale: 2 }).default("0").notNull(),
+  proLegendLabel: varchar("proLegendLabel", { length: 64 }).default("Pro Legend").notNull(),
+  updatedBy: bigint("updatedBy", { mode: "number" }).references(() => users.id, { onDelete: "set null" }),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+});
+
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 export type Wallet = typeof wallets.$inferSelect;
@@ -227,3 +239,5 @@ export type Referral = typeof referrals.$inferSelect;
 export type InsertReferral = typeof referrals.$inferInsert;
 export type AdminAuditLog = typeof adminAuditLog.$inferSelect;
 export type InsertAdminAuditLog = typeof adminAuditLog.$inferInsert;
+export type LeaderboardSettings = typeof leaderboardSettings.$inferSelect;
+export type InsertLeaderboardSettings = typeof leaderboardSettings.$inferInsert;

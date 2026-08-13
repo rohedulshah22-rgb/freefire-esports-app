@@ -10,7 +10,9 @@ import {
   type InsertTransaction,
   type InsertUser,
   type InsertWithdrawal,
+  adminAuditLog,
   deposits,
+  leaderboardSettings,
   matchCategories,
   matchModes,
   matchParticipants,
@@ -131,6 +133,118 @@ export async function getUserById(userId: number) {
   const db = await requireDb();
   const result = await db.select().from(users).where(eq(users.id, userId)).limit(1);
   return result[0];
+}
+
+export type LeaderboardMetric = "kills" | "earnings" | "matches";
+export type LeaderboardPeriod = "daily" | "weekly" | "all";
+
+export function getLeaderboardPeriodStart(period: LeaderboardPeriod, weeklyCycleStartedAt: Date) {
+  if (period === "all") return null;
+  if (period === "weekly") return weeklyCycleStartedAt;
+
+  const start = new Date();
+  start.setHours(0, 0, 0, 0);
+  return start;
+}
+
+export function getLeaderboardRankBadge(rank: number, proLegendLabel: string) {
+  if (rank <= 3) return "Podium Elite";
+  if (rank <= 10) return proLegendLabel;
+  if (rank <= 50) return "Rising Pro";
+  return "Contender";
+}
+
+export async function getLeaderboardSettings(databaseOverride?: WorkflowDatabase) {
+  const db = databaseOverride ?? await requireDb();
+  await db.insert(leaderboardSettings).values({ id: 1 }).onConflictDoNothing();
+  const [settings] = await db.select().from(leaderboardSettings).where(eq(leaderboardSettings.id, 1)).limit(1);
+  if (!settings) throw new Error("Leaderboard settings could not be initialized");
+  return settings;
+}
+
+export async function getLeaderboard(
+  userId: number,
+  input: { metric: LeaderboardMetric; period: LeaderboardPeriod },
+  databaseOverride?: WorkflowDatabase,
+) {
+  const db = databaseOverride ?? await requireDb();
+  const settings = await getLeaderboardSettings(db);
+  const periodStart = getLeaderboardPeriodStart(input.period, settings.weeklyCycleStartedAt);
+  const participantCondition = periodStart
+    ? and(eq(matchParticipants.userId, users.id), gte(matchParticipants.updatedAt, periodStart))
+    : eq(matchParticipants.userId, users.id);
+
+  const rows = await db.select({
+    userId: users.id,
+    username: sql<string>`COALESCE(${users.freeFireName}, ${users.name}, 'Free Fire Player')`,
+    freeFireUid: users.freeFireUid,
+    totalKills: sql<number>`COALESCE(SUM(COALESCE(${matchParticipants.killCount}, 0)), 0)::int`,
+    totalEarnings: sql<string>`COALESCE(SUM(COALESCE(${matchParticipants.prizeAwarded}, 0)), 0)::text`,
+    matchesPlayed: sql<number>`COUNT(${matchParticipants.id})::int`,
+  })
+    .from(users)
+    .leftJoin(matchParticipants, participantCondition)
+    .where(eq(users.isBanned, false))
+    .groupBy(users.id, users.freeFireName, users.name, users.freeFireUid);
+
+  const entries = rows.map((row) => ({
+    ...row,
+    totalKills: Number(row.totalKills),
+    totalEarnings: Number(row.totalEarnings),
+    matchesPlayed: Number(row.matchesPlayed),
+  })).sort((left, right) => {
+    const metricValue = (entry: typeof left) => input.metric === "kills"
+      ? entry.totalKills
+      : input.metric === "earnings"
+        ? entry.totalEarnings
+        : entry.matchesPlayed;
+    return metricValue(right) - metricValue(left)
+      || right.totalKills - left.totalKills
+      || right.totalEarnings - left.totalEarnings
+      || right.matchesPlayed - left.matchesPlayed
+      || left.username.localeCompare(right.username);
+  }).map((entry, index) => ({
+    ...entry,
+    rank: index + 1,
+    rankBadge: getLeaderboardRankBadge(index + 1, settings.proLegendLabel),
+  }));
+
+  return {
+    settings,
+    periodStart,
+    entries,
+    myEntry: entries.find((entry) => entry.userId === userId) ?? null,
+  };
+}
+
+export async function updateLeaderboardRewards(
+  updatedBy: number,
+  input: { top1Reward: string; top2Reward: string; top3Reward: string; proLegendLabel: string },
+) {
+  const db = await requireDb();
+  await getLeaderboardSettings(db);
+  const [settings] = await db.update(leaderboardSettings).set({
+    top1Reward: input.top1Reward,
+    top2Reward: input.top2Reward,
+    top3Reward: input.top3Reward,
+    proLegendLabel: input.proLegendLabel,
+    updatedBy,
+    updatedAt: new Date(),
+  }).where(eq(leaderboardSettings.id, 1)).returning();
+  await db.insert(adminAuditLog).values({ action: "leaderboard_rewards_updated", details: { updatedBy } });
+  return settings;
+}
+
+export async function resetLeaderboardWeeklyCycle(updatedBy: number) {
+  const db = await requireDb();
+  await getLeaderboardSettings(db);
+  const [settings] = await db.update(leaderboardSettings).set({
+    weeklyCycleStartedAt: new Date(),
+    updatedBy,
+    updatedAt: new Date(),
+  }).where(eq(leaderboardSettings.id, 1)).returning();
+  await db.insert(adminAuditLog).values({ action: "leaderboard_weekly_cycle_reset", details: { updatedBy } });
+  return settings;
 }
 
 export async function getPlayerProfile(userId: number, databaseOverride?: WorkflowDatabase) {

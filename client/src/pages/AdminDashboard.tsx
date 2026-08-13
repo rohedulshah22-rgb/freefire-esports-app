@@ -242,6 +242,61 @@ function CreateMatchForm() {
   );
 }
 
+function LeaderboardManagement() {
+  const settingsQuery = trpc.leaderboard.adminSettings.useQuery();
+  const utils = trpc.useUtils();
+  const [top1Reward, setTop1Reward] = useState("");
+  const [top2Reward, setTop2Reward] = useState("");
+  const [top3Reward, setTop3Reward] = useState("");
+  const [proLegendLabel, setProLegendLabel] = useState("Pro Legend");
+
+  React.useEffect(() => {
+    if (!settingsQuery.data) return;
+    setTop1Reward(String(settingsQuery.data.top1Reward));
+    setTop2Reward(String(settingsQuery.data.top2Reward));
+    setTop3Reward(String(settingsQuery.data.top3Reward));
+    setProLegendLabel(settingsQuery.data.proLegendLabel);
+  }, [settingsQuery.data]);
+
+  const updateRewards = trpc.leaderboard.updateRewards.useMutation({
+    onSuccess: () => {
+      toast.success("Leaderboard reward settings saved.");
+      utils.leaderboard.adminSettings.invalidate();
+      utils.leaderboard.getBoard.invalidate();
+    },
+    onError: (error) => toast.error(error.message || "Unable to save reward settings."),
+  });
+  const resetWeekly = trpc.leaderboard.resetWeeklyCycle.useMutation({
+    onSuccess: () => {
+      toast.success("Weekly leaderboard cycle reset. Weekly rankings now start fresh.");
+      utils.leaderboard.adminSettings.invalidate();
+      utils.leaderboard.getBoard.invalidate();
+    },
+    onError: (error) => toast.error(error.message || "Unable to reset the weekly cycle."),
+  });
+
+  const resetCycle = () => {
+    if (!window.confirm("Reset the weekly leaderboard now? Existing match data is retained, but Weekly rankings will start from this moment.")) return;
+    resetWeekly.mutate();
+  };
+
+  return (
+    <div className="space-y-5">
+      <div className="rounded-xl border border-accent/30 bg-accent/10 p-4">
+        <div className="flex items-center gap-2"><Trophy className="h-5 w-5 text-accent" /><h3 className="font-bold text-accent">Leaderboard Cycle Control</h3></div>
+        <p className="mt-2 text-sm text-muted-foreground">The weekly period currently began {settingsQuery.data?.weeklyCycleStartedAt ? new Date(settingsQuery.data.weeklyCycleStartedAt).toLocaleString() : "loading"}. Resetting changes only the Weekly ranking window; player and match records are retained.</p>
+      </div>
+      <div className="grid gap-4 sm:grid-cols-3">
+        <div><label className="mb-2 block text-sm font-semibold">1st Place Reward (Coins)</label><Input type="number" min="0" inputMode="decimal" value={top1Reward} onChange={(event) => setTop1Reward(event.target.value)} className="input-gaming" /></div>
+        <div><label className="mb-2 block text-sm font-semibold">2nd Place Reward (Coins)</label><Input type="number" min="0" inputMode="decimal" value={top2Reward} onChange={(event) => setTop2Reward(event.target.value)} className="input-gaming" /></div>
+        <div><label className="mb-2 block text-sm font-semibold">3rd Place Reward (Coins)</label><Input type="number" min="0" inputMode="decimal" value={top3Reward} onChange={(event) => setTop3Reward(event.target.value)} className="input-gaming" /></div>
+      </div>
+      <div><label className="mb-2 block text-sm font-semibold">Top 10 Rank Badge</label><Input maxLength={64} value={proLegendLabel} onChange={(event) => setProLegendLabel(event.target.value)} className="input-gaming" /></div>
+      <div className="grid gap-3 sm:grid-cols-2"><Button className="btn-neon" onClick={() => updateRewards.mutate({ top1Reward, top2Reward, top3Reward, proLegendLabel })} disabled={updateRewards.isPending}>{updateRewards.isPending ? "Saving Rewards..." : "Save Leaderboard Rewards"}</Button><Button type="button" variant="outline" className="border-destructive/40 text-destructive hover:bg-destructive/10" onClick={resetCycle} disabled={resetWeekly.isPending}>{resetWeekly.isPending ? "Resetting Cycle..." : "Reset Weekly Cycle"}</Button></div>
+    </div>
+  );
+}
+
 /**
  * Users Management Component
  */
@@ -692,12 +747,13 @@ function AdminDashboardContent() {
 
         {/* Tabs */}
         <Tabs defaultValue="deposits" className="w-full">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid h-auto w-full grid-cols-3 gap-1 md:grid-cols-6">
             <TabsTrigger value="create-match">Create Match</TabsTrigger>
             <TabsTrigger value="users">Users Management</TabsTrigger>
             <TabsTrigger value="deposits">Deposits</TabsTrigger>
             <TabsTrigger value="withdrawals">Withdrawals</TabsTrigger>
             <TabsTrigger value="results">Match Results</TabsTrigger>
+            <TabsTrigger value="leaderboard">Leaderboard</TabsTrigger>
           </TabsList>
 
           {/* Create Match Tab */}
@@ -716,6 +772,14 @@ function AdminDashboardContent() {
                 Users Management
               </h2>
               <UsersManagement />
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="leaderboard" className="mt-6">
+            <Card className="card-gaming">
+              <h2 className="mb-2 flex items-center gap-2 text-lg font-bold"><Trophy className="h-5 w-5 text-accent" />Leaderboard Rewards & Weekly Cycle</h2>
+              <p className="mb-5 text-sm text-muted-foreground">Configure podium rewards and begin a fresh weekly ranking window when required.</p>
+              <LeaderboardManagement />
             </Card>
           </TabsContent>
 
