@@ -32,6 +32,7 @@ import {
 import { trpc } from "@/lib/trpc";
 import { useLocation } from "wouter";
 import { getAdminLoginUrl } from "@/const";
+import { FinalFeatureManagement } from "@/components/FinalFeatureManagement";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import {
@@ -945,6 +946,7 @@ function AdminDashboardContent() {
             <TabsTrigger value="results">Match Results</TabsTrigger>
             <TabsTrigger value="leaderboard">Leaderboard</TabsTrigger>
             <TabsTrigger value="referrals">Refer & Earn</TabsTrigger>
+            <TabsTrigger value="live-tools">Live Tools</TabsTrigger>
           </TabsList>
 
           {/* Create Match Tab */}
@@ -990,6 +992,7 @@ function AdminDashboardContent() {
             </Card>
           </TabsContent>
 
+          <TabsContent value="live-tools" className="mt-6"><FinalFeatureManagement /></TabsContent>
           {/* Deposits Tab */}
           <TabsContent value="deposits" className="mt-6">
             <Card className="card-gaming">

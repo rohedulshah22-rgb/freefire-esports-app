@@ -220,6 +220,8 @@ export default function ProfilePage() {
           <Card className="card-gaming col-span-2 sm:col-span-1"><div className="flex items-center gap-3"><Sparkles className="h-7 w-7 text-secondary" /><div><p className="text-xs text-muted-foreground">Total Earnings</p><p className="text-2xl font-black text-secondary">{totalEarnings} <span className="text-sm">Coins</span></p></div></div></Card>
         </section>
 
+        <Card className="card-gaming border-secondary/30"><div className="mb-3 flex items-center gap-2"><Trophy className="h-5 w-5 text-secondary" /><h2 className="font-bold">Player Career Stats</h2></div><div className="grid grid-cols-3 gap-3 text-center"><div className="rounded-lg bg-secondary/10 p-3"><p className="text-xs text-muted-foreground">Win Rate</p><p className="mt-1 text-xl font-black text-secondary">{profile.career.winRate}%</p></div><div className="rounded-lg bg-accent/10 p-3"><p className="text-xs text-muted-foreground">Matches Won</p><p className="mt-1 text-xl font-black text-accent">{profile.career.matchesWon}</p></div><div className="rounded-lg bg-primary/10 p-3"><p className="text-xs text-muted-foreground">Total Kills</p><p className="mt-1 text-xl font-black text-primary">{profile.totalKills}</p></div></div></Card>
+
         <Card id="refer-earn" className="card-gaming border-primary/35 scroll-mt-5">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div><div className="flex items-center gap-2"><Gift className="h-5 w-5 text-accent" /><h2 className="text-lg font-bold">Refer & Earn</h2></div><p className="mt-1 text-sm text-muted-foreground">Invite friends. Both players receive Bonus Coins after your friend completes their first valid match join.</p></div>

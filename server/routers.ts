@@ -61,6 +61,16 @@ import {
   getAdminActiveMatches,
   publishMatchRoomCredentials,
   cancelMatchAndRefund,
+  claimDailyCheckIn,
+  createAnnouncement,
+  getAdminAnnouncements,
+  getAdminResultProofs,
+  getDailyCheckInStatus,
+  getLiveAnnouncements,
+  getMyMatchResultProof,
+  reviewMatchResultProof,
+  submitMatchResultProof,
+  updateAnnouncement,
 } from "./db";
 import { ADMIN_PANEL_ACCESS_COOKIE_NAME, ADMIN_PANEL_ACCESS_MS, ADMIN_SESSION_COOKIE_NAME, COOKIE_NAME } from "@shared/const";
 import { TRPCError } from "@trpc/server";
@@ -130,6 +140,11 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }) => {
         return updatePlayerAvatar(ctx.user.id, input);
       }),
+    dailyCheckInStatus: protectedProcedure.query(({ ctx }) => getDailyCheckInStatus(ctx.user.id)),
+    claimDailyCheckIn: protectedProcedure.mutation(async ({ ctx }) => {
+      try { return await claimDailyCheckIn(ctx.user.id); }
+      catch (error) { throw new TRPCError({ code: "BAD_REQUEST", message: error instanceof Error ? error.message : "Unable to claim today’s bonus" }); }
+    }),
   }),
 
   leaderboard: router({
@@ -233,6 +248,7 @@ export const appRouter = router({
         matchId: z.number(),
         freeFireIGN: z.string().min(1, "Free Fire IGN is required"),
         freeFireUID: z.string().min(1, "Free Fire UID is required"),
+        teamMembers: z.array(z.object({ name: z.string().trim().min(2).max(32), uid: z.string().trim().regex(/^\d{6,32}$/) })).max(3).default([]),
       }))
       .mutation(async ({ input, ctx }) => {
         const userId = ctx.user.id;
@@ -246,7 +262,7 @@ export const appRouter = router({
         }
 
         try {
-          const result = await joinMatch(input.matchId, userId, input.freeFireIGN, input.freeFireUID);
+          const result = await joinMatch(input.matchId, userId, input.freeFireIGN, input.freeFireUID, input.teamMembers);
           console.log(`[Matches] Player ${userId} joined match ${input.matchId} with IGN: ${input.freeFireIGN}`);
           return { success: true, ...result };
         } catch (error) {
@@ -281,7 +297,14 @@ export const appRouter = router({
           });
         }
       }),
+    myResultProof: protectedProcedure.input(z.object({ matchId: z.number().int().positive() })).query(({ ctx, input }) => getMyMatchResultProof(input.matchId, ctx.user.id)),
+    submitResultProof: protectedProcedure.input(z.object({ matchId: z.number().int().positive(), base64: z.string().min(1).max(4_200_000), mimeType: z.enum(["image/jpeg", "image/png", "image/webp"]), playerNote: z.string().trim().max(500).optional() })).mutation(async ({ ctx, input }) => {
+      try { return await submitMatchResultProof(ctx.user.id, input); }
+      catch (error) { throw new TRPCError({ code: "BAD_REQUEST", message: error instanceof Error ? error.message : "Unable to submit result proof" }); }
+    }),
   }),
+
+  announcements: router({ live: publicProcedure.query(() => getLiveAnnouncements()) }),
 
   /**
    * WALLET OPERATIONS
@@ -625,6 +648,14 @@ export const appRouter = router({
     }),
 
     getActiveMatches: adminProcedure.query(() => getAdminActiveMatches()),
+    announcements: adminProcedure.query(() => getAdminAnnouncements()),
+    createAnnouncement: adminProcedure.input(z.object({ message: z.string().trim().min(3).max(240), isActive: z.boolean().default(true) })).mutation(({ ctx, input }) => createAnnouncement(ctx.user.id, input.message, input.isActive)),
+    updateAnnouncement: adminProcedure.input(z.object({ id: z.number().int().positive(), message: z.string().trim().min(3).max(240), isActive: z.boolean() })).mutation(({ ctx, input }) => updateAnnouncement(ctx.user.id, input.id, input.message, input.isActive)),
+    resultProofs: adminProcedure.query(() => getAdminResultProofs()),
+    reviewResultProof: adminProcedure.input(z.object({ proofId: z.number().int().positive(), status: z.enum(["approved", "rejected"]), reviewNote: z.string().trim().max(500).optional() })).mutation(async ({ ctx, input }) => {
+      try { return await reviewMatchResultProof(input.proofId, ctx.user.id, input.status, input.reviewNote); }
+      catch (error) { throw new TRPCError({ code: "BAD_REQUEST", message: error instanceof Error ? error.message : "Unable to review proof" }); }
+    }),
 
     publishRoomCredentials: adminProcedure
       .input(z.object({

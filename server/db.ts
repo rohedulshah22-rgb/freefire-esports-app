@@ -12,11 +12,15 @@ import {
   type InsertUser,
   type InsertWithdrawal,
   adminAuditLog,
+  announcements,
+  dailyCheckIns,
   deposits,
   leaderboardSettings,
   matchCategories,
   matchModes,
   matchParticipants,
+  matchResultProofs,
+  matchTeamMembers,
   matches,
   paymentAttempts,
   referrals,
@@ -481,6 +485,8 @@ export async function getPlayerProfile(userId: number, databaseOverride?: Workfl
     totalMatches: sql<number>`COUNT(*)::int`,
     totalKills: sql<number>`COALESCE(SUM(${matchParticipants.killCount}), 0)::int`,
     totalEarnings: sql<string>`COALESCE(SUM(${matchParticipants.prizeAwarded}), 0)::text`,
+    matchesWon: sql<number>`COUNT(*) FILTER (WHERE ${matchParticipants.status} = 'completed' AND ${matchParticipants.rank} = 1)::int`,
+    completedMatches: sql<number>`COUNT(*) FILTER (WHERE ${matchParticipants.status} = 'completed')::int`,
   }).from(matchParticipants).where(eq(matchParticipants.userId, userId));
 
   const [latestMatchIdentity] = await db.select({
@@ -498,6 +504,7 @@ export async function getPlayerProfile(userId: number, databaseOverride?: Workfl
     totalMatches: stats?.totalMatches ?? 0,
     totalKills: stats?.totalKills ?? 0,
     totalEarnings: stats?.totalEarnings ?? "0",
+    career: { matchesWon: stats?.matchesWon ?? 0, winRate: (stats?.completedMatches ?? 0) > 0 ? Number((((stats?.matchesWon ?? 0) / (stats?.completedMatches ?? 1)) * 100).toFixed(1)) : 0 },
   };
 }
 
@@ -858,8 +865,10 @@ export async function joinMatch(
   userId: number,
   freeFireIGN: string,
   freeFireUID: string,
+  teamMembers: Array<{ name: string; uid: string }> | WorkflowDatabase = [],
   databaseOverride?: WorkflowDatabase,
 ) {
+  if (!Array.isArray(teamMembers)) { databaseOverride = teamMembers; teamMembers = []; }
   return withinWorkflowTransaction(databaseOverride, async (tx) => {
     const matchRows = await tx.select().from(matches).where(eq(matches.id, matchId)).limit(1).for("update");
     const match = matchRows[0];
@@ -868,6 +877,11 @@ export async function joinMatch(
       throw new Error("Match is not accepting players");
     }
     if (match.currentPlayers >= match.totalSlots) throw new Error("Match is full");
+    const [mode] = await tx.select().from(matchModes).where(eq(matchModes.id, match.modeId)).limit(1);
+    if (!mode) throw new Error("Match mode not found");
+    const expectedMembers = Math.max(0, mode.teamSize - 1);
+    const normalizedTeam = teamMembers.map((member) => ({ name: member.name.trim(), uid: member.uid.trim() }));
+    if (normalizedTeam.length !== expectedMembers || normalizedTeam.some((member) => member.name.length < 2 || member.name.length > 32 || !/^\d{6,32}$/.test(member.uid)) || new Set(normalizedTeam.map((member) => member.uid)).size !== normalizedTeam.length || normalizedTeam.some((member) => member.uid === freeFireUID.trim())) throw new Error(expectedMembers ? `Enter ${expectedMembers} valid teammate Name and UID record${expectedMembers > 1 ? "s" : ""}` : "Solo modes do not accept teammate records");
 
     const duplicate = await tx.select({ id: matchParticipants.id }).from(matchParticipants)
       .where(and(eq(matchParticipants.matchId, matchId), eq(matchParticipants.userId, userId))).limit(1);
@@ -898,6 +912,7 @@ export async function joinMatch(
       matchId, userId, entryFeeDeducted: entryFee.toFixed(2), freeFireIGN, freeFireUID, status: "joined",
     }).returning({ id: matchParticipants.id });
     const participantId = participantRows[0]!.id;
+    if (normalizedTeam.length) await tx.insert(matchTeamMembers).values(normalizedTeam.map((member) => ({ participantId, memberName: member.name, memberUid: member.uid })));
 
     await tx.update(matches).set({ currentPlayers: sql`${matches.currentPlayers} + 1`, updatedAt: new Date() })
       .where(eq(matches.id, matchId));
@@ -1324,3 +1339,36 @@ export async function adjustUserBalance(
     description,
   });
 }
+
+const PROOF_MIME_TYPES = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" } as const;
+function decodeProofImage(base64: string, mimeType: keyof typeof PROOF_MIME_TYPES) {
+  const normalized = base64.replace(/^data:image\/(?:jpeg|png|webp);base64,/, "");
+  const image = Buffer.from(normalized, "base64");
+  const valid = (mimeType === "image/jpeg" && image.subarray(0, 3).equals(Buffer.from([0xff, 0xd8, 0xff]))) || (mimeType === "image/png" && image.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) || (mimeType === "image/webp" && image.subarray(0, 4).toString("ascii") === "RIFF" && image.subarray(8, 12).toString("ascii") === "WEBP");
+  if (!normalized || image.length === 0 || image.length > 3 * 1024 * 1024 || !valid) throw new Error("Upload a valid JPG, PNG, or WebP screenshot up to 3 MB");
+  return image;
+}
+export async function submitMatchResultProof(userId: number, input: { matchId: number; base64: string; mimeType: keyof typeof PROOF_MIME_TYPES; playerNote?: string }) {
+  const image = decodeProofImage(input.base64, input.mimeType);
+  const { url } = await storagePut(`match-result-proofs/${userId}/${input.matchId}/${randomUUID()}.${PROOF_MIME_TYPES[input.mimeType]}`, image, input.mimeType);
+  return withinWorkflowTransaction(undefined, async (tx) => {
+    const [participant] = await tx.select().from(matchParticipants).where(and(eq(matchParticipants.matchId, input.matchId), eq(matchParticipants.userId, userId))).limit(1).for("update");
+    if (!participant) throw new Error("Join this match before submitting a result proof");
+    const [match] = await tx.select({ status: matches.status }).from(matches).where(eq(matches.id, input.matchId)).limit(1);
+    if (!match || !["active", "completed"].includes(match.status)) throw new Error("Result proof uploads open after the match begins");
+    const [existing] = await tx.select().from(matchResultProofs).where(eq(matchResultProofs.participantId, participant.id)).limit(1).for("update");
+    if (existing?.status === "approved") throw new Error("An approved proof cannot be replaced");
+    const values = { matchId: input.matchId, participantId: participant.id, userId, imageUrl: url, playerNote: input.playerNote?.trim() || null, status: "pending" as const, reviewedBy: null, reviewNote: null, reviewedAt: null, updatedAt: new Date() };
+    return existing ? (await tx.update(matchResultProofs).set(values).where(eq(matchResultProofs.id, existing.id)).returning())[0] : (await tx.insert(matchResultProofs).values(values).returning())[0];
+  });
+}
+export async function getMyMatchResultProof(matchId: number, userId: number) { const db = await requireDb(); return (await db.select().from(matchResultProofs).where(and(eq(matchResultProofs.matchId, matchId), eq(matchResultProofs.userId, userId))).limit(1))[0] ?? null; }
+export async function getAdminResultProofs() { const db = await requireDb(); return db.select({ proof: matchResultProofs, matchTitle: matches.matchTitle, playerName: sql<string>`COALESCE(${users.freeFireName}, ${users.name}, ${users.email}, 'Player')` }).from(matchResultProofs).innerJoin(matches, eq(matchResultProofs.matchId, matches.id)).innerJoin(users, eq(matchResultProofs.userId, users.id)).orderBy(desc(matchResultProofs.submittedAt)); }
+export async function reviewMatchResultProof(proofId: number, adminUserId: number, status: "approved" | "rejected", reviewNote?: string) { const db = await requireDb(); const [proof] = await db.update(matchResultProofs).set({ status, reviewedBy: adminUserId, reviewNote: reviewNote?.trim() || null, reviewedAt: new Date(), updatedAt: new Date() }).where(eq(matchResultProofs.id, proofId)).returning(); if (!proof) throw new Error("Result proof not found"); await db.insert(adminAuditLog).values({ action: "match_result_proof_reviewed", details: { proofId, adminUserId, status } }); return proof; }
+export async function getLiveAnnouncements() { const db = await requireDb(); const now = new Date(); return db.select().from(announcements).where(and(eq(announcements.isActive, true), sql`(${announcements.startsAt} IS NULL OR ${announcements.startsAt} <= ${now})`, sql`(${announcements.endsAt} IS NULL OR ${announcements.endsAt} >= ${now})`)).orderBy(desc(announcements.createdAt)); }
+export async function getAdminAnnouncements() { const db = await requireDb(); return db.select().from(announcements).orderBy(desc(announcements.createdAt)); }
+export async function createAnnouncement(adminUserId: number, message: string, isActive: boolean) { const db = await requireDb(); const [item] = await db.insert(announcements).values({ message: message.trim(), isActive, createdBy: adminUserId }).returning(); await db.insert(adminAuditLog).values({ action: "announcement_created", details: { announcementId: item!.id, adminUserId } }); return item; }
+export async function updateAnnouncement(adminUserId: number, id: number, message: string, isActive: boolean) { const db = await requireDb(); const [item] = await db.update(announcements).set({ message: message.trim(), isActive, updatedAt: new Date() }).where(eq(announcements.id, id)).returning(); if (!item) throw new Error("Announcement not found"); await db.insert(adminAuditLog).values({ action: "announcement_updated", details: { announcementId: id, adminUserId } }); return item; }
+function indiaDate() { return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date()); }
+export async function getDailyCheckInStatus(userId: number) { const db = await requireDb(); const claimDate = indiaDate(); const [claim] = await db.select().from(dailyCheckIns).where(and(eq(dailyCheckIns.userId, userId), eq(dailyCheckIns.claimDate, claimDate))).limit(1); return { claimDate, claimed: Boolean(claim), rewardAmount: claim?.rewardAmount ?? null }; }
+export async function claimDailyCheckIn(userId: number) { return withinWorkflowTransaction(undefined, async (tx) => { const claimDate = indiaDate(); const [claim] = await tx.select().from(dailyCheckIns).where(and(eq(dailyCheckIns.userId, userId), eq(dailyCheckIns.claimDate, claimDate))).limit(1).for("update"); if (claim) return { alreadyClaimed: true, rewardAmount: Number(claim.rewardAmount), claimDate }; const rewardAmount = Number(claimDate.slice(-2)) % 2 === 0 ? 2 : 1; await tx.insert(wallets).values({ userId, depositBalance: "0", winningBalance: "0", bonusBalance: "0" }).onConflictDoNothing({ target: wallets.userId }); await tx.update(wallets).set({ bonusBalance: sql`${wallets.bonusBalance} + ${rewardAmount}` }).where(eq(wallets.userId, userId)); await tx.insert(dailyCheckIns).values({ userId, claimDate, rewardAmount: rewardAmount.toFixed(2) }); await tx.insert(transactions).values({ userId, type: "daily_checkin", amount: rewardAmount.toFixed(2), balanceType: "bonus", status: "completed", description: `Daily check-in reward for ${claimDate}` }); return { alreadyClaimed: false, rewardAmount, claimDate }; }); }

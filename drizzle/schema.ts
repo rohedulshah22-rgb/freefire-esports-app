@@ -10,6 +10,7 @@ import {
   pgTable,
   text,
   timestamp,
+  unique,
   varchar,
 } from "drizzle-orm/pg-core";
 
@@ -22,6 +23,7 @@ export const transactionKindEnum = pgEnum("transaction_kind", [
   "prize_win",
   "refund",
   "referral_bonus",
+  "daily_checkin",
   "admin_adjustment",
 ]);
 export const balanceKindEnum = pgEnum("balance_kind", ["deposit", "winning", "bonus"]);
@@ -32,6 +34,7 @@ export const depositStatusEnum = pgEnum("deposit_status", ["pending", "approved"
 export const withdrawalStatusEnum = pgEnum("withdrawal_status", ["pending", "approved", "rejected", "completed"]);
 export const payoutMethodEnum = pgEnum("payout_method", ["upi", "google_play"]);
 export const paymentAttemptStatusEnum = pgEnum("payment_attempt_status", ["created", "authorized", "captured", "failed", "cancelled"]);
+export const proofReviewStatusEnum = pgEnum("proof_review_status", ["pending", "approved", "rejected"]);
 
 export const users = pgTable("users", {
   id: bigserial("id", { mode: "number" }).primaryKey(),
@@ -201,6 +204,52 @@ export const matchParticipants = pgTable("matchParticipants", {
   updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
 });
 
+/** Teammate identities registered by a Duo or Squad leader for match verification. */
+export const matchTeamMembers = pgTable("matchTeamMembers", {
+  id: bigserial("id", { mode: "number" }).primaryKey(),
+  participantId: bigint("participantId", { mode: "number" }).notNull().references(() => matchParticipants.id, { onDelete: "cascade" }),
+  memberName: varchar("memberName", { length: 32 }).notNull(),
+  memberUid: varchar("memberUid", { length: 32 }).notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [unique("matchTeamMembers_participant_member_unique").on(table.participantId, table.memberUid)]);
+
+/** Player-submitted in-game screenshot proof for Admin review. */
+export const matchResultProofs = pgTable("matchResultProofs", {
+  id: bigserial("id", { mode: "number" }).primaryKey(),
+  matchId: bigint("matchId", { mode: "number" }).notNull().references(() => matches.id, { onDelete: "cascade" }),
+  participantId: bigint("participantId", { mode: "number" }).notNull().unique().references(() => matchParticipants.id, { onDelete: "cascade" }),
+  userId: bigint("userId", { mode: "number" }).notNull().references(() => users.id, { onDelete: "cascade" }),
+  imageUrl: varchar("imageUrl", { length: 512 }).notNull(),
+  playerNote: varchar("playerNote", { length: 500 }),
+  status: proofReviewStatusEnum("status").default("pending").notNull(),
+  reviewedBy: bigint("reviewedBy", { mode: "number" }).references(() => users.id, { onDelete: "set null" }),
+  reviewNote: varchar("reviewNote", { length: 500 }),
+  submittedAt: timestamp("submittedAt", { withTimezone: true }).defaultNow().notNull(),
+  reviewedAt: timestamp("reviewedAt", { withTimezone: true }),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+});
+
+/** Admin-managed announcements rendered in the live Home ticker. */
+export const announcements = pgTable("announcements", {
+  id: bigserial("id", { mode: "number" }).primaryKey(),
+  message: varchar("message", { length: 240 }).notNull(),
+  isActive: boolean("isActive").default(true).notNull(),
+  startsAt: timestamp("startsAt", { withTimezone: true }),
+  endsAt: timestamp("endsAt", { withTimezone: true }),
+  createdBy: bigint("createdBy", { mode: "number" }).references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+});
+
+/** Exactly-once daily Bonus Coin check-in claims, keyed to an India-local calendar day. */
+export const dailyCheckIns = pgTable("dailyCheckIns", {
+  id: bigserial("id", { mode: "number" }).primaryKey(),
+  userId: bigint("userId", { mode: "number" }).notNull().references(() => users.id, { onDelete: "cascade" }),
+  claimDate: varchar("claimDate", { length: 10 }).notNull(),
+  rewardAmount: numeric("rewardAmount", { precision: 10, scale: 2 }).notNull(),
+  claimedAt: timestamp("claimedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [unique("dailyCheckIns_user_date_unique").on(table.userId, table.claimDate)]);
+
 export const transactions = pgTable("transactions", {
   id: bigserial("id", { mode: "number" }).primaryKey(),
   userId: bigint("userId", { mode: "number" }).notNull().references(() => users.id, { onDelete: "cascade" }),
@@ -251,6 +300,14 @@ export type Match = typeof matches.$inferSelect;
 export type InsertMatch = typeof matches.$inferInsert;
 export type MatchParticipant = typeof matchParticipants.$inferSelect;
 export type InsertMatchParticipant = typeof matchParticipants.$inferInsert;
+export type MatchTeamMember = typeof matchTeamMembers.$inferSelect;
+export type InsertMatchTeamMember = typeof matchTeamMembers.$inferInsert;
+export type MatchResultProof = typeof matchResultProofs.$inferSelect;
+export type InsertMatchResultProof = typeof matchResultProofs.$inferInsert;
+export type Announcement = typeof announcements.$inferSelect;
+export type InsertAnnouncement = typeof announcements.$inferInsert;
+export type DailyCheckIn = typeof dailyCheckIns.$inferSelect;
+export type InsertDailyCheckIn = typeof dailyCheckIns.$inferInsert;
 export type Deposit = typeof deposits.$inferSelect;
 export type InsertDeposit = typeof deposits.$inferInsert;
 export type PaymentAttempt = typeof paymentAttempts.$inferSelect;

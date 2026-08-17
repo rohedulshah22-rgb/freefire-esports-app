@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -32,6 +32,7 @@ export default function MatchDetailPage() {
   const [, params] = useRoute("/match/:id");
   const [isJoining, setIsJoining] = useState(false);
   const [joinFormOpen, setJoinFormOpen] = useState(false);
+  const proofInputRef = useRef<HTMLInputElement>(null);
   const matchId = Number(params?.id);
   const utils = trpc.useUtils();
 
@@ -84,8 +85,10 @@ export default function MatchDetailPage() {
       setIsJoining(false);
     },
   });
+  const proofMutation = trpc.matches.submitResultProof.useMutation({ onSuccess: () => { toast.success("Result proof submitted for Admin review."); utils.matches.myResultProof.invalidate({ matchId }); }, onError: (error) => toast.error(error.message) });
+  const submitProofFile = (file: File) => { if (!(["image/jpeg", "image/png", "image/webp"] as const).includes(file.type as "image/jpeg" | "image/png" | "image/webp") || file.size > 3 * 1024 * 1024) { toast.error("Use a JPG, PNG, or WebP screenshot up to 3 MB."); return; } const reader = new FileReader(); reader.onload = () => { const base64 = typeof reader.result === "string" ? reader.result.split(",")[1] : ""; if (base64) proofMutation.mutate({ matchId, base64, mimeType: file.type as "image/jpeg" | "image/png" | "image/webp" }); }; reader.readAsDataURL(file); };
 
-  const handleJoinMatch = async (ign: string, uid: string) => {
+  const handleJoinMatch = async (ign: string, uid: string, teamMembers: Array<{ name: string; uid: string }>) => {
     if (!match || !wallet) {
       toast.error("Missing match or wallet information");
       return;
@@ -106,6 +109,7 @@ export default function MatchDetailPage() {
       matchId: match.id,
       freeFireIGN: ign,
       freeFireUID: uid,
+      teamMembers,
     });
   };
 
@@ -205,6 +209,8 @@ export default function MatchDetailPage() {
 
         {(match.customModeTag || match.rulesSummary) ? <Card className="card-gaming border-accent/25"><h2 className="flex items-center gap-2 font-bold text-foreground"><AlertCircle className="h-5 w-5 text-accent" />Custom Mode Rules</h2>{match.customModeTag ? <Badge className="mt-3 border border-accent/35 bg-accent/15 text-accent hover:bg-accent/15">{match.customModeTag}</Badge> : null}<p className="mt-3 text-sm leading-relaxed text-muted-foreground">{match.rulesSummary || "Follow the match rules shown in the Rules tab and the room briefing."}</p></Card> : null}
 
+        {isMatchStarted && <Card className="card-gaming border-primary/30"><h2 className="font-bold text-foreground">Match Result Proof</h2><p className="mt-1 text-sm text-muted-foreground">Submit your in-game victory screenshot for Admin review.</p><input ref={proofInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ""; if (file) submitProofFile(file); }} /><Button className="btn-neon mt-4" disabled={proofMutation.isPending} onClick={() => proofInputRef.current?.click()}>{proofMutation.isPending ? "Uploading..." : "Upload Victory Screenshot"}</Button></Card>}
+
         {/* Join Button */}
         {!isMatchStarted && (
           <Button
@@ -222,6 +228,7 @@ export default function MatchDetailPage() {
           onOpenChange={setJoinFormOpen}
           matchTitle={`${match.category} - ${match.mode}`}
           entryFee={parseFloat(match.entryFee)}
+          teamSize={matchData?.mode.teamSize}
           onConfirm={handleJoinMatch}
           isLoading={isJoining}
         />

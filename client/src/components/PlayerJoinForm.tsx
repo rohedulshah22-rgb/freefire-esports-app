@@ -18,7 +18,8 @@ interface PlayerJoinFormProps {
   onOpenChange: (open: boolean) => void;
   matchTitle: string;
   entryFee: number;
-  onConfirm: (ign: string, uid: string) => Promise<void>;
+  teamSize?: number;
+  onConfirm: (ign: string, uid: string, teamMembers: Array<{ name: string; uid: string }>) => Promise<void>;
   isLoading?: boolean;
 }
 
@@ -27,11 +28,13 @@ export function PlayerJoinForm({
   onOpenChange,
   matchTitle,
   entryFee,
+  teamSize = 1,
   onConfirm,
   isLoading = false,
 }: PlayerJoinFormProps) {
   const [ign, setIgn] = useState("");
   const [uid, setUid] = useState("");
+  const [teamMembers, setTeamMembers] = useState<Array<{ name: string; uid: string }>>(() => Array.from({ length: Math.max(0, teamSize - 1) }, () => ({ name: "", uid: "" })));
 
   const handleSubmit = async () => {
     if (!ign.trim()) {
@@ -44,7 +47,8 @@ export function PlayerJoinForm({
     }
 
     try {
-      await onConfirm(ign, uid);
+      if (teamMembers.some((member) => !member.name.trim() || !member.uid.trim())) { toast.error("Enter every teammate Name and Free Fire UID"); return; }
+      await onConfirm(ign, uid, teamMembers);
       setIgn("");
       setUid("");
       onOpenChange(false);
@@ -119,6 +123,7 @@ export function PlayerJoinForm({
               Find your UID in Free Fire profile settings
             </p>
           </div>
+          {teamSize > 1 && <div className="space-y-3 rounded-lg border border-primary/25 bg-primary/5 p-3"><p className="text-sm font-bold text-primary">Team Members ({teamSize - 1})</p>{teamMembers.map((member, index) => <div key={index} className="grid grid-cols-2 gap-2"><Input placeholder={`Teammate ${index + 1} Name`} value={member.name} onChange={(e) => setTeamMembers((items) => items.map((item, itemIndex) => itemIndex === index ? { ...item, name: e.target.value } : item))} className="input-gaming" disabled={isLoading} maxLength={32} /><Input placeholder="Free Fire UID" inputMode="numeric" value={member.uid} onChange={(e) => setTeamMembers((items) => items.map((item, itemIndex) => itemIndex === index ? { ...item, uid: e.target.value.replace(/\D/g, "") } : item))} className="input-gaming" disabled={isLoading} maxLength={32} /></div>)}</div>}
         </div>
 
         <DialogFooter className="gap-2">

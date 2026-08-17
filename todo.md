@@ -463,3 +463,12 @@
 - [x] Verify repository state and GitHub authorization for a clean push
 - [x] Commit the latest validated project changes with a descriptive message
 - [x] Push the resulting commit to the configured GitHub repository
+
+## Phase 72: Player Proof, Team, Announcement, Career, and Check-in Features
+- [x] Review existing match, profile, wallet, storage, and Admin workflows for safe extension
+- [x] Add persistent Neon data models and migrations for result proofs, team members, announcements, and daily check-ins
+- [x] Build secure Player and Admin contracts for proof uploads/review, announcements, career summaries, and daily claims
+- [x] Add Duo and Squad teammate Name/UID collection to match registration
+- [x] Add Player UI for proof submission, live announcement ticker, career stats, and daily check-in
+- [x] Add Admin UI for announcement management and result-proof review
+- [x] Add rollback-safe regression coverage and complete TypeScript validation

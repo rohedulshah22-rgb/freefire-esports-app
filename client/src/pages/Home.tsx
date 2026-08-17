@@ -207,6 +207,9 @@ export default function Home() {
   const { data: joinedMatchIds = [] } = trpc.matches.getJoinedMatchIds.useQuery(undefined, {
     enabled: isAuthenticated,
   });
+  const announcementsQuery = trpc.announcements.live.useQuery();
+  const dailyCheckInQuery = trpc.profile.dailyCheckInStatus.useQuery(undefined, { enabled: isAuthenticated });
+  const claimCheckIn = trpc.profile.claimDailyCheckIn.useMutation({ onSuccess: (result) => { toast.success(result.alreadyClaimed ? "Today’s check-in is already claimed." : `${result.rewardAmount} Bonus Coins added!`); dailyCheckInQuery.refetch(); }, onError: (error) => toast.error(error.message) });
   const registerDeviceMutation = trpc.security.registerDevice.useMutation();
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -235,12 +238,13 @@ export default function Home() {
     setJoinFormOpen(true);
   };
 
-  const handleConfirmJoin = async (ign: string, uid: string) => {
+  const handleConfirmJoin = async (ign: string, uid: string, teamMembers: Array<{ name: string; uid: string }>) => {
     if (!selectedMatchForJoin) return;
     joinMutation.mutate({
       matchId: selectedMatchForJoin.match.id,
       freeFireIGN: ign,
       freeFireUID: uid,
+      teamMembers,
     });
   };
 
@@ -286,6 +290,8 @@ export default function Home() {
           <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:shrink-0"><Button variant="outline" size="sm" className="w-full border-primary/40 px-2 text-primary hover:bg-primary/10 sm:w-auto sm:px-3" onClick={() => { window.location.href = "/leaderboard"; }}><Medal className="mr-1.5 h-4 w-4" />Ranks</Button><Button variant="outline" size="sm" className="w-full border-accent/40 px-2 text-accent hover:bg-accent/10 sm:w-auto sm:px-3" onClick={() => { window.location.href = "/profile"; }}><UserRound className="mr-1.5 h-4 w-4" />Profile</Button></div>
         </div>
       </div>
+
+      {announcementsQuery.data?.length ? <div className="overflow-hidden border-b border-accent/25 bg-accent/10 py-2"><div className="whitespace-nowrap text-sm font-bold text-accent animate-[ticker_18s_linear_infinite]">{announcementsQuery.data.map((item) => `◆ ${item.message}`).join("     ")}</div></div> : null}
 
       {/* Main Content */}
       <div className="mx-auto max-w-4xl px-4 py-6">
@@ -403,6 +409,7 @@ export default function Home() {
           )}
         </section>
 
+        <Card className="card-gaming mb-6 border-secondary/35"><div className="flex items-center justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-wider text-secondary">Daily Check-in</p><p className="mt-1 text-sm text-muted-foreground">Claim 1–2 Bonus Coins every day.</p></div><Button className="btn-neon" disabled={dailyCheckInQuery.isLoading || dailyCheckInQuery.data?.claimed || claimCheckIn.isPending} onClick={() => claimCheckIn.mutate()}>{dailyCheckInQuery.data?.claimed ? "Claimed Today" : claimCheckIn.isPending ? "Claiming..." : "Claim Bonus"}</Button></div></Card>
         {wallet && (
           <Card className="card-gaming mb-6">
             <div className="mb-4 flex items-center gap-3"><Wallet className="h-5 w-5 text-accent" /><h2 className="text-lg font-bold">Wallet Balance</h2></div>
@@ -424,6 +431,7 @@ export default function Home() {
           onOpenChange={setJoinFormOpen}
           matchTitle={`${selectedMatchForJoin.match.categoryId} - ${selectedMatchForJoin.mode.name}`}
           entryFee={parseFloat(selectedMatchForJoin.match.entryFee)}
+          teamSize={selectedMatchForJoin.mode.teamSize}
           onConfirm={handleConfirmJoin}
           isLoading={joinMutation.isPending}
         />
