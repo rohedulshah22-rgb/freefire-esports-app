@@ -26,6 +26,8 @@ import {
   Plus,
   Minus,
   Search,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useLocation } from "wouter";
@@ -675,6 +677,7 @@ function AdminLogin({
 }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [passwordVisible, setPasswordVisible] = useState(false);
   const [error, setError] = useState(() => {
     const authError = new URLSearchParams(window.location.search).get("authError");
     if (authError === "owner-account-required") return "Please select rosidulshah4@gmail.com to access the Admin Panel.";
@@ -733,13 +736,24 @@ function AdminLogin({
           </div>
           <div>
             <label className="block text-sm font-semibold mb-2">Admin Password</label>
-            <Input
-              type="password"
-              placeholder="Enter password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="input-gaming"
-            />
+            <div className="relative">
+              <Input
+                type={passwordVisible ? "text" : "password"}
+                placeholder="Enter password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="input-gaming pr-12"
+              />
+              <button
+                type="button"
+                aria-label={passwordVisible ? "Hide administrator password" : "Show administrator password"}
+                aria-pressed={passwordVisible}
+                onClick={() => setPasswordVisible((visible) => !visible)}
+                className="absolute inset-y-0 right-0 flex w-11 items-center justify-center text-muted-foreground transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              >
+                {passwordVisible ? <EyeOff className="h-4 w-4" aria-hidden="true" /> : <Eye className="h-4 w-4" aria-hidden="true" />}
+              </button>
+            </div>
           </div>
           <Button
             className="btn-neon w-full"

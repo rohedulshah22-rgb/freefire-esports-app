@@ -184,15 +184,15 @@ export default function ProfilePage() {
       <div className="mx-auto max-w-4xl space-y-5 px-4 py-6">
         <Card className="card-gaming overflow-hidden">
           <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-4">
+            <div className="flex min-w-0 items-center gap-4">
               <input ref={avatarInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleAvatarSelection} />
               <button type="button" className="group relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-accent/40 bg-primary/15 text-2xl font-black text-accent shadow-[0_0_24px_rgba(255,184,0,0.18)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-70" onClick={() => avatarInputRef.current?.click()} disabled={updateAvatar.isPending} aria-label="Upload or change profile avatar" title="Tap to change avatar">
                 {avatarPreview || profile.user.avatarUrl ? <img src={avatarPreview || profile.user.avatarUrl!} alt={`${accountName} avatar`} className="h-full w-full object-cover" /> : getInitials(accountName)}
                 <span className="absolute inset-x-0 bottom-0 flex h-7 items-center justify-center bg-background/80 text-primary opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">{updateAvatar.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}</span>
               </button>
-              <div>
-                <div className="mb-1 flex flex-wrap items-center gap-2"><h2 className="text-2xl font-black text-foreground">{accountName}</h2><ShieldCheck className="h-4 w-4 text-primary" /></div>
-                <p className="flex items-center gap-2 text-sm text-muted-foreground"><Mail className="h-4 w-4" />{profile.user.email || "Email unavailable"}</p>
+              <div className="min-w-0 flex-1">
+                <div className="mb-1 flex flex-wrap items-center gap-2"><h2 className="break-words text-2xl font-black text-foreground">{accountName}</h2><ShieldCheck className="h-4 w-4 shrink-0 text-primary" /></div>
+                <p className="flex min-w-0 items-start gap-2 text-sm text-muted-foreground"><Mail className="mt-0.5 h-4 w-4 shrink-0" /><span className="min-w-0 break-all">{profile.user.email || "Email unavailable"}</span></p>
                 <p className="mt-2 font-mono text-xs text-accent">UID: {profile.user.playerUid}</p>
                 <p className="mt-1 font-mono text-xs text-muted-foreground">Free Fire UID: {profile.freeFireUid || "Not set"}</p>
               </div>

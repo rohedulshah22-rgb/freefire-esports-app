@@ -4,7 +4,7 @@ import {
 import { getDb } from "./db";
 import { matches, referrals, deposits, users } from "../drizzle/schema";
 import { eq, desc, and, gte, lt } from "drizzle-orm";
-import { verifyAdminPassword } from "./adminCredentials";
+import { isSupportedAdminUsername, verifyAdminPassword } from "./adminCredentials";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router, protectedProcedure } from "./_core/trpc";
 import { z } from "zod";
@@ -555,8 +555,8 @@ export const appRouter = router({
           adminUsername: users.adminUsername,
           adminPasswordHash: users.adminPasswordHash,
         }).from(users).where(eq(users.email, ctx.user.email));
-        const credential = records.find((record) => record.adminUsername === input.username && record.adminPasswordHash);
-        if (!credential?.adminPasswordHash || !verifyAdminPassword(input.password, credential.adminPasswordHash)) {
+        const credential = records.find((record) => record.adminPasswordHash);
+        if (!isSupportedAdminUsername(input.username) || !credential?.adminPasswordHash || !verifyAdminPassword(input.password, credential.adminPasswordHash)) {
           throw new TRPCError({ code: "UNAUTHORIZED", message: "Invalid administrator credentials" });
         }
         const accessToken = await sdk.createSessionToken(ctx.user.openId, { expiresInMs: ADMIN_PANEL_ACCESS_MS });

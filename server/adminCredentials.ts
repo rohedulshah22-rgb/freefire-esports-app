@@ -1,5 +1,11 @@
 import { randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 
+export const ADMIN_USERNAME_ALIASES = ["admin", "r-esports"] as const;
+
+export function isSupportedAdminUsername(username: string) {
+  return ADMIN_USERNAME_ALIASES.includes(username.trim().toLowerCase() as (typeof ADMIN_USERNAME_ALIASES)[number]);
+}
+
 export function createAdminPasswordHash(password: string) {
   const salt = randomBytes(16).toString("base64url");
   return `scrypt$${salt}$${scryptSync(password, salt, 64).toString("base64")}`;

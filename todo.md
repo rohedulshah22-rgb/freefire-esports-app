@@ -451,3 +451,10 @@
 - [x] Add owner-authorized Active Matches listing and room ID/password publication controls
 - [x] Add an Admin cancel-match action with exactly-once entry-fee refunds to joined players
 - [x] Add regression coverage for authorization, room publishing, match cancellation, and refund idempotency
+
+## Phase 70: Admin Credential and Profile Readability Repair
+- [x] Review the existing Admin credential verifier and Profile email layout
+- [x] Accept admin and R-ESPORTS aliases with the requested Admin password
+- [x] Add an accessible Show/Hide toggle to the Admin Password field
+- [x] Prevent Profile email text truncation by adding responsive wrapping
+- [x] Add regression coverage for credential aliases, password toggle, and Profile email rendering
