@@ -961,6 +961,31 @@ export async function getPlayerMatches(userId: number) {
   return db.select().from(matchParticipants).where(eq(matchParticipants.userId, userId));
 }
 
+export async function getMyRegisteredMatches(userId: number) {
+  const db = await requireDb();
+  return db.select({
+    participantId: matchParticipants.id,
+    participantStatus: matchParticipants.status,
+    freeFireIGN: matchParticipants.freeFireIGN,
+    matchId: matches.id,
+    matchStatus: matches.status,
+    scheduledStartTime: matches.scheduledStartTime,
+    entryFee: matches.entryFee,
+    totalPrizePool: matches.totalPrizePool,
+    currentPlayers: matches.currentPlayers,
+    totalSlots: matches.totalSlots,
+    credentialsVisibleAt: matches.credentialsVisibleAt,
+    category: matchCategories.name,
+    mode: matchModes.name,
+    customModeTag: matches.customModeTag,
+  }).from(matchParticipants)
+    .innerJoin(matches, eq(matchParticipants.matchId, matches.id))
+    .innerJoin(matchCategories, eq(matches.categoryId, matchCategories.id))
+    .innerJoin(matchModes, eq(matches.modeId, matchModes.id))
+    .where(eq(matchParticipants.userId, userId))
+    .orderBy(desc(matches.scheduledStartTime));
+}
+
 export async function updateParticipantResult(participantId: number, killCount: number, rank: number, prizeAwarded: string) {
   const db = await getDb();
   if (!db) throw new Error("Neon database is not configured");

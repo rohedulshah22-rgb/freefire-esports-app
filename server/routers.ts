@@ -30,6 +30,7 @@ import {
   getMatchParticipants,
   submitParticipantResultAndSettle,
   getPlayerMatches,
+  getMyRegisteredMatches,
   isBanned,
   banUser,
   getAllUsersWithWallets,
@@ -242,6 +243,7 @@ export const appRouter = router({
       const participants = await getPlayerMatches(ctx.user.id);
       return participants.map((participant) => participant.matchId);
     }),
+    getMyMatches: protectedProcedure.query(({ ctx }) => getMyRegisteredMatches(ctx.user.id)),
 
     join: protectedProcedure
       .input(z.object({ 

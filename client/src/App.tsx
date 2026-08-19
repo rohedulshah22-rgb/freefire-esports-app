@@ -13,6 +13,7 @@ import Profile from "./pages/Profile";
 import MatchDetail from "./pages/MatchDetail";
 import AdminDashboard from "./pages/AdminDashboard";
 import Leaderboard from "./pages/Leaderboard";
+import MyMatches from "./pages/MyMatches";
 
 function Router() {
   return (
@@ -24,6 +25,7 @@ function Router() {
       <Route path={"/withdraw"} component={Withdrawal} />
       <Route path={"/profile"} component={Profile} />
       <Route path={"/leaderboard"} component={Leaderboard} />
+      <Route path={"/my-matches"} component={MyMatches} />
       <Route path={"/match/:id"} component={MatchDetail} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}

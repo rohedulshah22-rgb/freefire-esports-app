@@ -479,3 +479,10 @@
 - [x] Make the join dialog mobile-scrollable with keyboard-safe spacing
 - [x] Enforce strict Free Fire UID and IGN validation and auto-fill saved Profile identity
 - [x] Add regression coverage and validate the repaired join flow
+
+## Phase 74: Player My Matches and Room Details
+- [x] Review current joined-match queries, room credential access rules, and Player navigation
+- [x] Add protected My Matches data and joined-match room detail contracts
+- [x] Add a joined-card Match Status & Room Details modal with room credential copying
+- [x] Add a Player My Matches tab/list with live countdowns and room status
+- [x] Add regression coverage and validate Player-only room-detail access

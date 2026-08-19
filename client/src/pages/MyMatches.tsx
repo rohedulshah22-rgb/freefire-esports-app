@@ -1,0 +1,14 @@
+import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Gamepad2, ArrowLeft } from "lucide-react";
+import { trpc } from "@/lib/trpc";
+import { MatchStatusDialog, type PlayerMatchStatus } from "@/components/MatchStatusDialog";
+
+export default function MyMatches() {
+  const matches = trpc.matches.getMyMatches.useQuery(); const [selected, setSelected] = useState<PlayerMatchStatus | null>(null); const [now, setNow] = useState(Date.now());
+  useEffect(() => { const timer = window.setInterval(() => setNow(Date.now()), 1000); return () => window.clearInterval(timer); }, []);
+  const countdown = (value: Date | string) => { const ms = Math.max(0, new Date(value).getTime() - now); return ms ? `${Math.floor(ms / 3_600_000)}h ${Math.floor((ms % 3_600_000) / 60_000)}m ${Math.floor((ms % 60_000) / 1_000)}s` : "Started"; };
+  return <div className="min-h-screen bg-background pb-12"><div className="border-b border-primary/20 bg-gradient-gaming px-4 py-5"><div className="mx-auto flex max-w-3xl items-center justify-between gap-3"><div><h1 className="flex items-center gap-2 text-xl font-black"><Gamepad2 className="h-5 w-5 text-primary" />My Matches</h1><p className="mt-1 text-sm text-muted-foreground">Your registered tournaments and room status.</p></div><Button variant="outline" onClick={() => { window.location.href = "/"; }}><ArrowLeft className="mr-2 h-4 w-4" />Home</Button></div></div><main className="mx-auto max-w-3xl space-y-3 px-4 py-6">{matches.isLoading ? <p className="text-muted-foreground">Loading your matches…</p> : matches.data?.length ? matches.data.map((match) => <Card key={match.participantId} className="card-gaming cursor-pointer transition hover:border-primary/50" onClick={() => setSelected(match)}><div className="flex items-center justify-between gap-3"><div className="min-w-0"><div className="flex flex-wrap gap-2"><Badge>{match.category}</Badge><Badge variant="outline">{match.mode}</Badge><Badge variant="secondary">{match.matchStatus}</Badge></div><h2 className="mt-3 font-bold">{match.customModeTag || `${match.category} ${match.mode}`}</h2><p className="mt-1 text-sm text-muted-foreground">{new Date(match.scheduledStartTime).toLocaleString()}</p><p className="mt-1 text-sm font-bold text-accent">Starts in {countdown(match.scheduledStartTime)}</p></div><Button className="btn-neon shrink-0">View Details</Button></div></Card>) : <Card className="card-gaming p-8 text-center"><p className="font-semibold">No joined matches yet.</p><p className="mt-1 text-sm text-muted-foreground">Register for a tournament to see it here.</p></Card>}</main><MatchStatusDialog open={!!selected} onOpenChange={(open) => !open && setSelected(null)} match={selected} /></div>;
+}

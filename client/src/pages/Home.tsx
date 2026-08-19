@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { AlertCircle, ArrowRight, Gift, Zap, Users, Trophy, Wallet, UserRound, Medal } from "lucide-react";
+import { AlertCircle, ArrowRight, Gift, Zap, Users, Trophy, Wallet, UserRound, Medal, Gamepad2 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useState, useEffect } from "react";
 import { getLoginUrl } from "@/const";
@@ -11,6 +11,7 @@ import { getWelcomeIdentity } from "@/lib/playerPresentation";
 import { getWalletActionPath } from "@/lib/walletNavigation";
 import { BRAND_LOGO_URL, BRAND_NAME } from "@/lib/brand";
 import { PlayerJoinForm } from "@/components/PlayerJoinForm";
+import { MatchStatusDialog, type PlayerMatchStatus } from "@/components/MatchStatusDialog";
 import { toast } from "sonner";
 import { getReferralDeviceToken } from "@/lib/referralDevice";
 import { getMatchSubcategoryFilters, matchesSelectedSubcategory } from "@/lib/matchSubcategories";
@@ -106,10 +107,12 @@ function MatchCategoryCard({
 function MatchCard({
   match,
   onJoin,
+  onJoinedClick,
   isJoined = false,
 }: {
   match: any;
   onJoin: (matchId: number) => void;
+  onJoinedClick?: () => void;
   isJoined?: boolean;
 }) {
   const scheduledTime = new Date(match.match.scheduledStartTime);
@@ -125,7 +128,7 @@ function MatchCard({
   const countdownLabel = remainingSeconds === 0 ? "Starting now" : `${hoursUntilStart}h ${minutesUntilStart}m ${secondsUntilStart}s`;
 
   return (
-    <Card className="card-gaming">
+    <Card className={`card-gaming ${isJoined ? "cursor-pointer transition hover:border-primary/50" : ""}`} onClick={isJoined ? onJoinedClick : undefined}>
       <div className="flex items-center justify-between">
         <div className="flex-1">
           <div className="mb-2 flex items-center gap-2">
@@ -153,7 +156,7 @@ function MatchCard({
           size="sm"
           className={isJoined ? "border border-muted-foreground/30 bg-muted text-muted-foreground hover:bg-muted" : "btn-neon"}
           disabled={isJoined}
-          onClick={() => onJoin(match.match.id)}
+          onClick={(event) => { event.stopPropagation(); if (isJoined) onJoinedClick?.(); else onJoin(match.match.id); }}
         >
           {isJoined ? "Joined" : "Join"}
         </Button>
@@ -222,6 +225,7 @@ export default function Home() {
   // State for join form modal
   const [joinFormOpen, setJoinFormOpen] = useState(false);
   const [selectedMatchForJoin, setSelectedMatchForJoin] = useState<any>(null);
+  const [selectedJoinedMatch, setSelectedJoinedMatch] = useState<PlayerMatchStatus | null>(null);
 
   // Join match mutation
   const joinMutation = trpc.matches.join.useMutation({
@@ -291,7 +295,7 @@ export default function Home() {
             <div className="flex items-center gap-2"><img src={BRAND_LOGO_URL} alt="BooyahCraft logo" className="h-8 w-8 shrink-0 rounded-lg border border-primary/40 bg-background object-cover" /><span className="text-lg font-black tracking-tight text-accent">{BRAND_NAME}</span></div>
             <div className="mt-3"><h1 className="break-words text-xl font-bold leading-tight text-foreground sm:text-3xl">Welcome{welcomeIdentity ? `, ${welcomeIdentity}` : ""}</h1><p className="mt-1 break-all text-xs leading-relaxed text-muted-foreground">{user?.email ? `Signed in as ${user.email}` : "Ready to compete?"}</p></div>
           </div>
-          <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:shrink-0"><Button variant="outline" size="sm" className="w-full border-primary/40 px-2 text-primary hover:bg-primary/10 sm:w-auto sm:px-3" onClick={() => { window.location.href = "/leaderboard"; }}><Medal className="mr-1.5 h-4 w-4" />Ranks</Button><Button variant="outline" size="sm" className="w-full border-accent/40 px-2 text-accent hover:bg-accent/10 sm:w-auto sm:px-3" onClick={() => { window.location.href = "/profile"; }}><UserRound className="mr-1.5 h-4 w-4" />Profile</Button></div>
+          <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:shrink-0"><Button variant="outline" size="sm" className="w-full border-primary/40 px-2 text-primary hover:bg-primary/10 sm:w-auto sm:px-3" onClick={() => { window.location.href = "/leaderboard"; }}><Medal className="mr-1.5 h-4 w-4" />Ranks</Button><Button variant="outline" size="sm" className="w-full border-secondary/40 px-2 text-secondary hover:bg-secondary/10 sm:w-auto sm:px-3" onClick={() => { window.location.href = "/my-matches"; }}><Gamepad2 className="mr-1.5 h-4 w-4" />Matches</Button><Button variant="outline" size="sm" className="w-full border-accent/40 px-2 text-accent hover:bg-accent/10 sm:w-auto sm:px-3" onClick={() => { window.location.href = "/profile"; }}><UserRound className="mr-1.5 h-4 w-4" />Profile</Button></div>
         </div>
       </div>
 
@@ -398,6 +402,7 @@ export default function Home() {
                         key={match.match.id}
                         match={match}
                         onJoin={() => handleJoinClick(match)}
+                        onJoinedClick={() => setSelectedJoinedMatch({ matchId: match.match.id, matchStatus: match.match.status, scheduledStartTime: match.match.scheduledStartTime, category: selectedCategoryName || "Match", mode: match.mode.name, customModeTag: match.match.customModeTag })}
                         isJoined={isJoined}
                       />
                     );
@@ -442,6 +447,7 @@ export default function Home() {
           isLoading={joinMutation.isPending}
         />
       )}
+      <MatchStatusDialog open={!!selectedJoinedMatch} onOpenChange={(open) => !open && setSelectedJoinedMatch(null)} match={selectedJoinedMatch} />
 
       {/* Floating WhatsApp Button */}
       <a
