@@ -870,6 +870,7 @@ export async function joinMatch(
 ) {
   if (!Array.isArray(teamMembers)) { databaseOverride = teamMembers; teamMembers = []; }
   return withinWorkflowTransaction(databaseOverride, async (tx) => {
+    if (!/^[A-Za-z0-9 _.-]{3,32}$/.test(freeFireIGN.trim()) || !/[A-Za-z]/.test(freeFireIGN) || /(.)\1{4}/.test(freeFireIGN) || !/^\d{8,12}$/.test(freeFireUID.trim())) throw new Error("Enter a valid Free Fire IGN and an 8 to 12 digit Free Fire UID");
     const matchRows = await tx.select().from(matches).where(eq(matches.id, matchId)).limit(1).for("update");
     const match = matchRows[0];
     if (!match) throw new Error("Match not found");

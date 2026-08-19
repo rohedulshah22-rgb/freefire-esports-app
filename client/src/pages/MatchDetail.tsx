@@ -67,6 +67,7 @@ export default function MatchDetailPage() {
 
   // Fetch wallet balance
   const { data: wallet } = trpc.wallet.getBalance.useQuery();
+  const { data: playerProfile } = trpc.profile.me.useQuery(undefined, { enabled: Boolean(user) });
 
   // Join match mutation
   const joinMatchMutation = trpc.matches.join.useMutation({
@@ -229,6 +230,8 @@ export default function MatchDetailPage() {
           matchTitle={`${match.category} - ${match.mode}`}
           entryFee={parseFloat(match.entryFee)}
           teamSize={matchData?.mode.teamSize}
+          initialIgn={playerProfile?.freeFireName}
+          initialUid={playerProfile?.freeFireUid}
           onConfirm={handleJoinMatch}
           isLoading={isJoining}
         />

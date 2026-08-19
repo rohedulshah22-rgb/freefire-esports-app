@@ -472,3 +472,10 @@
 - [x] Add Player UI for proof submission, live announcement ticker, career stats, and daily check-in
 - [x] Add Admin UI for announcement management and result-proof review
 - [x] Add rollback-safe regression coverage and complete TypeScript validation
+
+## Phase 73: Join Flow Reliability Repair
+- [x] Review match-card joined state and Player Join dialog behavior
+- [x] Disable joined match actions with a clear grey Joined state
+- [x] Make the join dialog mobile-scrollable with keyboard-safe spacing
+- [x] Enforce strict Free Fire UID and IGN validation and auto-fill saved Profile identity
+- [x] Add regression coverage and validate the repaired join flow

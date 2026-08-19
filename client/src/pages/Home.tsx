@@ -151,7 +151,7 @@ function MatchCard({
         </div>
         <Button
           size="sm"
-          className="btn-neon"
+          className={isJoined ? "border border-muted-foreground/30 bg-muted text-muted-foreground hover:bg-muted" : "btn-neon"}
           disabled={isJoined}
           onClick={() => onJoin(match.match.id)}
         >
@@ -167,6 +167,7 @@ function MatchCard({
  */
 export default function Home() {
   const { user, isAuthenticated, loading } = useAuth();
+  const utils = trpc.useUtils();
   const welcomeIdentity = getWelcomeIdentity(user);
   const [selectedCategory, setSelectedCategory] = useState<number | undefined>(undefined);
   const [selectedMode, setSelectedMode] = useState<number | undefined>(undefined);
@@ -204,6 +205,7 @@ export default function Home() {
   const { data: wallet } = trpc.wallet.getBalance.useQuery(undefined, {
     enabled: isAuthenticated,
   });
+  const { data: playerProfile } = trpc.profile.me.useQuery(undefined, { enabled: isAuthenticated });
   const { data: joinedMatchIds = [] } = trpc.matches.getJoinedMatchIds.useQuery(undefined, {
     enabled: isAuthenticated,
   });
@@ -227,6 +229,8 @@ export default function Home() {
       toast.success("Successfully joined match!");
       setJoinFormOpen(false);
       setSelectedMatchForJoin(null);
+      utils.matches.getJoinedMatchIds.invalidate();
+      utils.matches.getUpcoming.invalidate();
     },
     onError: (error: any) => {
       toast.error(error.message || "Failed to join match");
@@ -432,6 +436,8 @@ export default function Home() {
           matchTitle={`${selectedMatchForJoin.match.categoryId} - ${selectedMatchForJoin.mode.name}`}
           entryFee={parseFloat(selectedMatchForJoin.match.entryFee)}
           teamSize={selectedMatchForJoin.mode.teamSize}
+          initialIgn={playerProfile?.freeFireName}
+          initialUid={playerProfile?.freeFireUid}
           onConfirm={handleConfirmJoin}
           isLoading={joinMutation.isPending}
         />

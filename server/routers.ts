@@ -246,8 +246,8 @@ export const appRouter = router({
     join: protectedProcedure
       .input(z.object({ 
         matchId: z.number(),
-        freeFireIGN: z.string().min(1, "Free Fire IGN is required"),
-        freeFireUID: z.string().min(1, "Free Fire UID is required"),
+        freeFireIGN: z.string().trim().min(3, "Enter a real Free Fire IGN").max(32).regex(/[A-Za-z]/, "IGN must include letters").regex(/^(?!.*(.)\1{4})[A-Za-z0-9 _.-]+$/, "Enter a valid Free Fire IGN"),
+        freeFireUID: z.string().trim().regex(/^\d{8,12}$/, "Free Fire UID must be 8 to 12 digits"),
         teamMembers: z.array(z.object({ name: z.string().trim().min(2).max(32), uid: z.string().trim().regex(/^\d{6,32}$/) })).max(3).default([]),
       }))
       .mutation(async ({ input, ctx }) => {
