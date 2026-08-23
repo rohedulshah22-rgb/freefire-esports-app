@@ -2,22 +2,19 @@ import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
-describe("Deposit testing-mode safeguards", () => {
+describe("Deposit gateway-pending safeguards", () => {
   it("keeps the Razorpay release foundation inactive until merchant credentials are configured", async () => {
     const source = await readFile(resolve(process.cwd(), "client/src/pages/AddMoney.tsx"), "utf8");
 
-    expect(source).toContain("TESTING MODE · RAZORPAY READY");
-    expect(source).toContain("Do not transfer real money");
-    expect(source).toContain("Submit Test Deposit Request");
+    expect(source).toContain("PAYMENT GATEWAY · SETUP PENDING");
+    expect(source).toContain("No payment is accepted yet");
+    expect(source).toContain("Razorpay order creation");
   });
 
-  it("keeps the player UTR field aligned with the server's exact twelve-digit contract", async () => {
+  it("keeps manual UTR collection out of the pending payment gateway page", async () => {
     const source = await readFile(resolve(process.cwd(), "client/src/pages/AddMoney.tsx"), "utf8");
 
-    expect(source).toContain("maxLength={12}");
-    expect(source).toContain('inputMode="numeric"');
-    expect(source).toContain('pattern="[0-9]{12}"');
-    expect(source).toContain('replace(/\\D/g, "").slice(0, 12)');
-    expect(source).toContain("/^\\d{12}$/.test(utrNumber)");
+    expect(source).not.toContain("UTR");
+    expect(source).not.toContain("wallet.addMoney");
   });
 });

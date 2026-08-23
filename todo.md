@@ -486,3 +486,9 @@
 - [x] Add a joined-card Match Status & Room Details modal with room credential copying
 - [x] Add a Player My Matches tab/list with live countdowns and room status
 - [x] Add regression coverage and validate Player-only room-detail access
+
+## Phase 75: Wallet UTR Cleanup and Razorpay Readiness
+- [x] Review static Wallet UTR UI and current Razorpay checkout configuration
+- [x] Remove all static UTR notices, text, and buttons from the Wallet interface
+- [x] Present Add Money as Payment Gateway Coming Soon / Setup Pending while retaining server-side Razorpay placeholders
+- [x] Add regression coverage and validate the Wallet cleanup and Razorpay readiness
