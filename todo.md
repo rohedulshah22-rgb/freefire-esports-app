@@ -492,3 +492,8 @@
 - [x] Remove all static UTR notices, text, and buttons from the Wallet interface
 - [x] Present Add Money as Payment Gateway Coming Soon / Setup Pending while retaining server-side Razorpay placeholders
 - [x] Add regression coverage and validate the Wallet cleanup and Razorpay readiness
+
+## Phase 76: Wallet UTR-Free Layout Verification
+- [x] Inspect Wallet and Home wallet presentation for remaining UTR notice content
+- [x] Remove any residual UTR-specific Wallet markup and preserve balance, Add Money, Withdraw, and referral access
+- [x] Add presentation coverage and validate the final UTR-free layout

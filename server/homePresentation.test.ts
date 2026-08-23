@@ -11,7 +11,7 @@ describe("Home welcome identity", () => {
     expect(getWelcomeIdentity(null)).toBe("");
   });
 
-  it("prioritizes match selection, then wallet actions, with a compact wallet UTR reminder and referral banner last", async () => {
+  it("prioritizes match selection, then UTR-free wallet actions, with the referral banner last", async () => {
     const homeSource = await readFile(new URL("../client/src/pages/Home.tsx", import.meta.url), "utf8");
     const matchSection = homeSource.indexOf('aria-labelledby="match-categories-heading"');
     const walletSection = homeSource.indexOf("<h2 className=\"text-lg font-bold\">Wallet Balance</h2>");
@@ -20,9 +20,8 @@ describe("Home welcome identity", () => {
     expect(matchSection).toBeGreaterThan(-1);
     expect(walletSection).toBeGreaterThan(matchSection);
     expect(referralSection).toBeGreaterThan(walletSection);
-    expect(homeSource).toContain("function WalletUTRReminder()");
-    expect(homeSource).toContain("<WalletUTRReminder />");
-    expect(homeSource).not.toContain("<UTRWarning />");
+    expect(homeSource).not.toContain("WalletUTRReminder");
+    expect(homeSource).not.toContain("UTR Verification Required");
   });
 
   it("uses compact two-column Match Category cards while retaining category actions", async () => {

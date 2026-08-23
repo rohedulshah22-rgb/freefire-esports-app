@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { AlertCircle, ArrowRight, Gift, Zap, Users, Trophy, Wallet, UserRound, Medal, Gamepad2 } from "lucide-react";
+import { ArrowRight, Gift, Zap, Users, Trophy, Wallet, UserRound, Medal, Gamepad2 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useState, useEffect } from "react";
 import { getLoginUrl } from "@/const";
@@ -15,62 +15,6 @@ import { MatchStatusDialog, type PlayerMatchStatus } from "@/components/MatchSta
 import { toast } from "sonner";
 import { getReferralDeviceToken } from "@/lib/referralDevice";
 import { getMatchSubcategoryFilters, matchesSelectedSubcategory } from "@/lib/matchSubcategories";
-
-/**
- * Compact multi-language UTR reminder displayed inside Wallet only.
- */
-function WalletUTRReminder() {
-  const [language, setLanguage] = useState<"en" | "bn" | "hi">("en");
-
-  const warnings = {
-    en: {
-      title: "⚠️ Important: UTR Verification Required",
-      message: "MUST submit 12-digit UTR correctly after payment!",
-      instruction: "After completing your deposit, you will receive a payment confirmation. Find the 12-digit UTR number and submit it in your wallet.",
-      button: "How to Find UTR",
-    },
-    bn: {
-      title: "⚠️ গুরুত্বপূর্ণ: UTR যাচাইকরণ প্রয়োজন",
-      message: "অর্থ প্রদানের পরে অবশ্যই 12-অঙ্কের UTR সঠিকভাবে জমা দিতে হবে!",
-      instruction: "আপনার জমা সম্পন্ন করার পরে, আপনি একটি অর্থ প্রদানের নিশ্চিতকরণ পাবেন। 12-অঙ্কের UTR নম্বর খুঁজুন এবং আপনার ওয়ালেটে জমা দিন।",
-      button: "UTR কীভাবে খুঁজে পাবেন",
-    },
-    hi: {
-      title: "⚠️ महत्वपूर्ण: UTR सत्यापन आवश्यक",
-      message: "भुगतान के बाद 12-अंकीय UTR को सही तरीके से जमा करना अनिवार्य है!",
-      instruction: "अपनी जमा राशि पूरी करने के बाद, आपको एक भुगतान पुष्टि प्राप्त होगी। 12-अंकीय UTR नंबर खोजें और अपने वॉलेट में जमा करें।",
-      button: "UTR कैसे खोजें",
-    },
-  };
-
-  const current = warnings[language];
-
-  return (
-    <div className="mt-4 rounded-lg border border-primary/30 bg-primary/5 p-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex min-w-0 items-center gap-2"><AlertCircle className="h-4 w-4 shrink-0 text-primary" /><div><p className="text-xs font-bold text-primary">{current.title}</p><p className="mt-0.5 text-xs text-muted-foreground">{current.message}</p></div></div>
-        <div className="flex shrink-0 gap-1">
-          {(["en", "bn", "hi"] as const).map((lang) => (
-            <button key={lang} onClick={() => setLanguage(lang)} className={`rounded px-1.5 py-1 text-[10px] font-semibold transition-all ${language === lang ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}>{lang === "en" ? "EN" : lang === "bn" ? "BN" : "HI"}</button>
-          ))}
-        </div>
-      </div>
-      <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-        <p className="text-[11px] leading-relaxed text-muted-foreground">{current.instruction}</p>
-        <Button
-          size="sm"
-          variant="outline"
-          className="h-7 border-primary/35 px-2 text-xs text-primary hover:bg-primary/10"
-          onClick={() => {
-            alert("How to find UTR:\n1. Check your bank SMS/email\n2. Look for 12-digit number starting with UTR\n3. Copy and paste in wallet");
-          }}
-        >
-          {current.button}
-        </Button>
-      </div>
-    </div>
-  );
-}
 
 /**
  * Match category card component
@@ -424,7 +368,6 @@ export default function Home() {
             <div className="mb-4 flex items-center gap-3"><Wallet className="h-5 w-5 text-accent" /><h2 className="text-lg font-bold">Wallet Balance</h2></div>
             <div className="grid grid-cols-3 gap-3 sm:gap-4"><div className="rounded-lg bg-primary/10 p-3"><p className="mb-1 text-xs text-muted-foreground">Deposit</p><p className="text-xl font-bold text-primary">{wallet.depositBalance}</p></div><div className="rounded-lg bg-accent/10 p-3"><p className="mb-1 text-xs text-muted-foreground">Winning</p><p className="text-xl font-bold text-accent">{wallet.winningBalance}</p></div><div className="rounded-lg bg-secondary/10 p-3"><p className="mb-1 text-xs text-muted-foreground">Bonus</p><p className="text-xl font-bold text-secondary">{wallet.bonusBalance}</p></div></div>
             <div className="mt-4 flex gap-2"><Button variant="outline" className="flex-1" onClick={() => { window.location.href = getWalletActionPath("add-money"); }}>Add Money</Button><Button variant="outline" className="flex-1" onClick={() => { window.location.href = getWalletActionPath("withdraw"); }}>Withdraw</Button></div>
-            <WalletUTRReminder />
           </Card>
         )}
 
